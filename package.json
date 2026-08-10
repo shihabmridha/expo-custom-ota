@@ -9,7 +9,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "bun run --filter '*' dev",
+    "dev": "bun run scripts/dev.ts",
     "dev:api": "bun --hot backend/src/server.ts",
     "dev:web": "bun run --cwd dashboard dev",
     "test": "bun test",

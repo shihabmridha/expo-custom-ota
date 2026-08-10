@@ -33,8 +33,14 @@ packages/
 
 ## Commands
 
-All cwd-sensitive scripts run **from the repo root** — Bun loads `.env` from cwd, and
-`file:./oat.db` / `./.storage` resolve from cwd.
+All cwd-sensitive scripts run **from the repo root**. `bun run dev` uses `scripts/dev.ts`, which
+spawns the API with the repo root as its cwd — `bun run --filter '*' dev` would run it from
+`backend/`, where Bun would not find the root `.env`.
+
+As defence in depth, `config/env.ts` anchors everything to the repository root: it locates the
+workspace root, backfills from the root `.env`, and resolves `STORAGE_LOCAL_DIR`,
+`SIGNING_KEYS_DIRECTORY` and a relative `file:` `DATABASE_URL` against it. Do not reintroduce
+cwd-relative resolution.
 
 ```bash
 bun install

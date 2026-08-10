@@ -1,4 +1,5 @@
-import { isAbsolute, resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { z } from 'zod';
 
 /**
@@ -7,7 +8,65 @@ import { z } from 'zod';
  * Validated once at boot and frozen. A misconfigured server should fail
  * immediately with every problem listed, not surface a confusing error on the
  * first request that happens to need the missing value.
+ *
+ * Everything anchors to the **repository root**, not the working directory.
+ * Bun auto-loads `.env` from cwd, so launching the server from `backend/`
+ * — which `bun run --filter '*' dev` does — would otherwise miss the root
+ * `.env` entirely, silently fall back to the default `file:./oat.db`, and
+ * create a second, empty database. The failure surfaces much later as
+ * "no such table: admins".
  */
+
+/** Walk up to the workspace root (the package.json declaring `workspaces`). */
+export function findRepoRoot(from = import.meta.dir): string {
+  let dir = from;
+  for (let depth = 0; depth < 10; depth++) {
+    const manifest = join(dir, 'package.json');
+    if (existsSync(manifest)) {
+      try {
+        if (JSON.parse(readFileSync(manifest, 'utf8')).workspaces) return dir;
+      } catch {
+        // Unparseable package.json — keep walking.
+      }
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return process.cwd();
+}
+
+/**
+ * Minimal `.env` parser.
+ *
+ * Only used to backfill values Bun did not already load, so process
+ * environment and a cwd-local `.env` always win. Deliberately not a dependency:
+ * this handles `KEY=value`, comments, blank lines and optional quotes, which is
+ * the whole format we use.
+ */
+function readEnvFile(path: string): Record<string, string> {
+  if (!existsSync(path)) return {};
+
+  const out: Record<string, string> = {};
+  for (const rawLine of readFileSync(path, 'utf8').split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+
+    const equals = line.indexOf('=');
+    if (equals === -1) continue;
+
+    const key = line.slice(0, equals).trim();
+    let value = line.slice(equals + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    if (key) out[key] = value;
+  }
+  return out;
+}
 
 const bytes = (fallback: number) => z.coerce.number().int().positive().default(fallback);
 
@@ -97,16 +156,27 @@ const schema = z
 
 export type Env = Readonly<z.infer<typeof schema>> & {
   readonly isProduction: boolean;
+  readonly repoRoot: string;
   readonly storageLocalDirAbsolute: string;
   readonly signingKeysDirAbsolute: string;
+  readonly databaseUrlAbsolute: string;
 };
 
-function absolutize(path: string): string {
-  return isAbsolute(path) ? path : resolve(process.cwd(), path);
-}
-
 export function loadEnv(source: Record<string, string | undefined> = process.env): Env {
-  const result = schema.safeParse(source);
+  const repoRoot = findRepoRoot();
+
+  // Backfill from the repo-root .env for anything the process environment does
+  // not already define, so the server behaves identically however it is
+  // launched. Explicit environment always wins.
+  const fromRootEnvFile = readEnvFile(join(repoRoot, '.env'));
+  const merged: Record<string, string | undefined> = { ...fromRootEnvFile };
+  for (const [key, value] of Object.entries(source)) {
+    if (value !== undefined && value !== '') merged[key] = value;
+  }
+
+  const absolutize = (path: string) => (isAbsolute(path) ? path : resolve(repoRoot, path));
+
+  const result = schema.safeParse(merged);
 
   if (!result.success) {
     const lines = result.error.issues.map(
@@ -116,11 +186,20 @@ export function loadEnv(source: Record<string, string | undefined> = process.env
   }
 
   const env = result.data;
+
+  // A relative `file:` database path is resolved against the repo root too,
+  // for the same reason: otherwise `bun run dev` and `bun run dev:api` would
+  // open different databases.
+  const databaseUrlAbsolute = env.DATABASE_URL.startsWith('file:')
+    ? `file:${absolutize(env.DATABASE_URL.slice('file:'.length).replace(/^\/\//, ''))}`
+    : env.DATABASE_URL;
+
   return Object.freeze({
     ...env,
+    DATABASE_URL: databaseUrlAbsolute,
+    databaseUrlAbsolute,
     isProduction: env.NODE_ENV === 'production',
-    // Resolved from cwd once, so a script run from a subdirectory cannot
-    // silently point at a different storage or key directory.
+    repoRoot,
     storageLocalDirAbsolute: absolutize(env.STORAGE_LOCAL_DIR),
     signingKeysDirAbsolute: absolutize(env.SIGNING_KEYS_DIRECTORY),
   });

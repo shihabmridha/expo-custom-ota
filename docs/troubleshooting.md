@@ -120,6 +120,24 @@ DATABASE_URL=libsql://localhost:8080?tls=0  # or opt out explicitly
 
 `libsql://` is correct for Turso cloud. See [turso.md](turso.md).
 
+## Login fails with "no such table: admins"
+
+The server is pointed at a different database than the one you migrated — almost always an empty
+one it created itself.
+
+Check the startup line: it reports which database was resolved. If it says a `file:` path you
+did not expect, something ran the server from the wrong directory, so Bun never loaded the root
+`.env` and `DATABASE_URL` fell back to its default.
+
+```bash
+bun run dev        # correct: scripts/dev.ts spawns the API from the repo root
+bun run dev:api    # correct
+cd backend && bun src/server.ts   # env is still resolved from the repo root, but prefer the above
+```
+
+Delete any stray `backend/oat.db`, then `bun run db:migrate`. The server now refuses to start
+against an unmigrated database rather than failing on the first login.
+
 ## Login returns 429
 
 Five failed attempts per 15 minutes per IP+email. argon2id costs roughly 100 ms of CPU per
