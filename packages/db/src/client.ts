@@ -52,7 +52,48 @@ export function isFileUrl(url: string): boolean {
   return url.startsWith('file:');
 }
 
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]', '0.0.0.0']);
+
+/**
+ * Catch `libsql://localhost:…` before the driver does.
+ *
+ * The libSQL client treats `libsql:` as "TLS required" and rewrites it to
+ * `https:`. A local `turso dev` / `sqld` serves plain HTTP with no certificate,
+ * so the request fails deep inside TLS with
+ * `UNKNOWN_CERTIFICATE_VERIFICATION_ERROR` and a `https://localhost/v2/pipeline`
+ * URL — which says nothing about the scheme being the cause.
+ *
+ * Returns an actionable message, or null when the URL is fine.
+ */
+export function checkDatabaseUrl(url: string): string | null {
+  if (!url.startsWith('libsql:')) return null;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return `DATABASE_URL is not a valid URL: ${url}`;
+  }
+
+  // `?tls=0` is the documented way to keep libsql: without TLS.
+  if (parsed.searchParams.get('tls') === '0') return null;
+  if (!LOOPBACK_HOSTS.has(parsed.hostname)) return null;
+
+  const port = parsed.port ? `:${parsed.port}` : '';
+  return (
+    `DATABASE_URL is "${url}", but the libSQL client treats libsql:// as TLS-required and will ` +
+    `connect to https://${parsed.hostname}${port} — which a local turso dev / sqld server does ` +
+    'not serve, so it fails with a certificate error.\n\n' +
+    `  Use plain HTTP instead:  DATABASE_URL=http://${parsed.hostname}${port}\n` +
+    `  Or keep the scheme:      DATABASE_URL=${url}?tls=0\n\n` +
+    'For a Turso cloud database, libsql:// is correct — it genuinely has TLS.'
+  );
+}
+
 export function createDb(config: DbConfig): OatDatabase {
+  const problem = checkDatabaseUrl(config.url);
+  if (problem) throw new Error(problem);
+
   if (isFileUrl(config.url)) {
     const sqlite = new Database(resolveFileUrl(config.url), { create: true });
 

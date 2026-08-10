@@ -103,6 +103,23 @@ On Windows, openssl ships with Git but is not on the PowerShell PATH. The tests 
 `C:\Program Files\Git\usr\bin\openssl.exe` and skip loudly if it is missing. Set `OPENSSL_BIN`
 to point at it.
 
+## `UNKNOWN_CERTIFICATE_VERIFICATION_ERROR` on a database command
+
+```
+TypeError: unknown certificate verification error
+  path: "https://localhost:8080/v2/pipeline"
+```
+
+`DATABASE_URL` uses `libsql://` against a local server. The libSQL client treats `libsql://` as
+TLS-required and rewrites it to `https://`, but `turso dev` / `sqld` serves plain HTTP.
+
+```bash
+DATABASE_URL=http://localhost:8080          # preferred
+DATABASE_URL=libsql://localhost:8080?tls=0  # or opt out explicitly
+```
+
+`libsql://` is correct for Turso cloud. See [turso.md](turso.md).
+
 ## Login returns 429
 
 Five failed attempts per 15 minutes per IP+email. argon2id costs roughly 100 ms of CPU per

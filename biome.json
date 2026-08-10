@@ -8,9 +8,9 @@
       "!**/node_modules",
       "!**/migrations",
       "!**/.storage",
-      "!**/fixtures/**",
+      "!**/fixtures",
       "!**/*.css",
-      "!e2e/**"
+      "!e2e"
     ]
   },
   "formatter": {

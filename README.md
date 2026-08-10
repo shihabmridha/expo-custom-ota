@@ -105,6 +105,8 @@ See [docs/deployment.md](docs/deployment.md).
 | [device-verification.md](docs/device-verification.md) | Phase 12: proving updates reach a real device |
 | [publishing.md](docs/publishing.md) | Upload, publish, promote, roll back |
 | [code-signing.md](docs/code-signing.md) | Keys, certificates, rotation |
+| [turso.md](docs/turso.md) | libSQL setups, and the libsql:// TLS gotcha |
+| [database-migrations.md](docs/database-migrations.md) | Schema conventions and constraints |
 | [protocol-notes.md](docs/protocol-notes.md) | Expo Updates v1 ground truth — read before touching protocol code |
 | [troubleshooting.md](docs/troubleshooting.md) | Keyed by the errors the client actually prints |
 | [decisions.md](docs/decisions.md) | Why things are the way they are |
