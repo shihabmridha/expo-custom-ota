@@ -17,6 +17,10 @@ build/
 *.pem
 !**/test/**/*.pem
 !**/tests/**/*.pem
+# The e2e app's code signing certificate is PUBLIC and must be committed — it is
+# embedded in the binary and is what verification checks against. The private
+# key it pairs with never leaves the server.
+!e2e/expo-test-app/certs/*.pem
 
 # Env
 .env
@@ -28,3 +32,11 @@ build/
 
 .DS_Store
 Thumbs.db
+
+# The e2e Expo app is built on demand, not part of the Bun workspace.
+e2e/expo-test-app/node_modules/
+e2e/expo-test-app/dist/
+e2e/expo-test-app/android/
+e2e/expo-test-app/ios/
+e2e/expo-test-app/update.zip
+e2e/expo-test-app/.expo/

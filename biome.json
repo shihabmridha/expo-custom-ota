@@ -9,7 +9,8 @@
       "!**/migrations",
       "!**/.storage",
       "!**/fixtures/**",
-      "!**/*.css"
+      "!**/*.css",
+      "!e2e/**"
     ]
   },
   "formatter": {

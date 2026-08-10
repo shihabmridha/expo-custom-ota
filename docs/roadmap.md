@@ -144,6 +144,8 @@ migrations applied on start.
 
 ## Phase 12 — Real-device verification · **needs physical devices**
 
+Full procedure: [device-verification.md](device-verification.md). Test app: `e2e/expo-test-app`.
+
 - [ ] Android: A → B → C → rollback-to-B → runtime-mismatch isolation
 - [ ] iOS: same
 - [ ] Signature negative test (wrong key ⇒ client refuses the update)

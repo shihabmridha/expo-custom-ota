@@ -1,0 +1,25 @@
+{
+  "name": "oat-e2e-test-app",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "private": true,
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "prebuild": "expo prebuild --clean",
+    "build:apk": "expo run:android --variant release",
+    "pack": "bun run ../../scripts/pack-update.ts --project ."
+  },
+  "dependencies": {
+    "expo": "~57.0.11",
+    "expo-status-bar": "~57.0.1",
+    "expo-updates": "~57.0.12",
+    "react": "19.2.3",
+    "react-native": "0.86.2"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  }
+}

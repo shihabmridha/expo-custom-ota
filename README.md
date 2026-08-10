@@ -102,6 +102,7 @@ See [docs/deployment.md](docs/deployment.md).
 | [development.md](docs/development.md) | Working on OAT |
 | [deployment.md](docs/deployment.md) | Running it in production |
 | [client-setup.md](docs/client-setup.md) | Configuring an Expo app |
+| [device-verification.md](docs/device-verification.md) | Phase 12: proving updates reach a real device |
 | [publishing.md](docs/publishing.md) | Upload, publish, promote, roll back |
 | [code-signing.md](docs/code-signing.md) | Keys, certificates, rotation |
 | [protocol-notes.md](docs/protocol-notes.md) | Expo Updates v1 ground truth — read before touching protocol code |
@@ -113,4 +114,5 @@ See [docs/deployment.md](docs/deployment.md).
 
 The protocol, database, importer, publishing, auth and dashboard are implemented and tested.
 **Real-device verification on Android and iOS is outstanding** — see
-[roadmap.md](docs/roadmap.md) Phase 12. Until that passes, treat this as pre-production.
+[device-verification.md](docs/device-verification.md), which has the full procedure and a
+prepared test app in `e2e/expo-test-app`. Until it passes, treat this as pre-production.
