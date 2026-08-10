@@ -1,25 +1,25 @@
-import { type ApiClient, ApiError, createApiClient } from '@oat/api-client';
+import { type ApiClient, ApiError, createApiClient } from '@ota/api-client';
 import type { ImportReleaseResult, ReleaseDetail } from './types.ts';
 
-export { ApiError } from '@oat/api-client';
+export { ApiError } from '@ota/api-client';
 export type * from './types.ts';
 
 /**
  * Ergonomic wrapper over the typed client.
  *
- * The dashboard uses `@oat/api-client` directly with TanStack Query; this layer
+ * The dashboard uses `@ota/api-client` directly with TanStack Query; this layer
  * exists for scripts and a future publishing CLI, where "upload, wait, publish"
  * as one call is what you actually want.
  */
-export interface OatClientOptions {
+export interface OtaClientOptions {
   baseUrl: string;
   fetch?: typeof globalThis.fetch;
 }
 
-export class OatClient {
+export class OtaClient {
   readonly api: ApiClient;
 
-  constructor(options: OatClientOptions) {
+  constructor(options: OtaClientOptions) {
     this.api = createApiClient({
       baseUrl: options.baseUrl.replace(/\/+$/, ''),
       ...(options.fetch ? { fetch: options.fetch } : {}),

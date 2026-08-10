@@ -24,7 +24,7 @@ Chosen by URL scheme:
 | `libsql:` / `https:` | `@libsql/client/web` | Turso |
 
 `/web` is deliberate — it is pure `fetch`, so there are no native N-API bindings to build or
-fail. Both are typed as one `OatDatabase`; the query builder API we use is identical.
+fail. Both are typed as one `OtaDatabase`; the query builder API we use is identical.
 
 ## Conventions
 

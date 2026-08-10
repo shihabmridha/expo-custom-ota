@@ -47,7 +47,7 @@ COPY --from=build /app/dashboard/dist ./dashboard/dist
 RUN mkdir -p /data/storage /data/signing-keys && chown -R bun:bun /data
 VOLUME /data
 
-ENV DATABASE_URL=file:/data/oat.db \
+ENV DATABASE_URL=file:/data/ota.db \
     STORAGE_LOCAL_DIR=/data/storage \
     SIGNING_KEYS_DIRECTORY=/data/signing-keys \
     DASHBOARD_DIST=/app/dashboard/dist \

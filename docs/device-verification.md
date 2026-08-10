@@ -1,6 +1,6 @@
 # Phase 12 — real-device verification
 
-The last gate. Until this passes on a physical device, OAT is pre-production.
+The last gate. Until this passes on a physical device, expo-custom-ota is pre-production.
 
 Everything below is prepared except the two steps only you can do: deploying to the VPS and
 building the APK.
@@ -23,7 +23,7 @@ Server on one machine, Android SDK and emulator on another, same network.
 
 ```
   laptop 192.168.0.53                emulator machine
-  ├── OAT API      :3000  ◀──────────  emulator (LAN, plain HTTP)
+  ├── expo-custom-ota API      :3000  ◀──────────  emulator (LAN, plain HTTP)
   └── dashboard    :5173  ◀──────────  browser (upload releases)
 ```
 
@@ -33,7 +33,7 @@ Three things are already handled for this:
   from the LAN.
 - Android 9+ blocks cleartext HTTP by default, and the failure is silent — no request leaves the
   device, so the server logs stay empty. `app.config.ts` enables the exemption automatically
-  **when and only when** `OAT_UPDATE_URL` starts with `http://`, so it cannot leak into an HTTPS
+  **when and only when** `OTA_UPDATE_URL` starts with `http://`, so it cannot leak into an HTTPS
   build.
 - The dashboard runs on `:5173` while the API answers on `:3000`, so a LAN upload's `Origin`
   matches neither. In development the origin check accepts any port on the same host; production
@@ -70,7 +70,7 @@ because it is a different server — so this is a genuine rebuild, not a config 
 Getting this order wrong means rebuilding.
 
 ```
-1. Deploy OAT to ota.acadion.xyz
+1. Deploy expo-custom-ota to ota.acadion.xyz
 2. Create the application in the dashboard   ← produces updateKey + certificate
 3. Paste both into e2e/expo-test-app         ← certificate goes in certs/certificate.pem
 4. Build and install the APK                 ← VERSION A ships inside the binary
@@ -114,7 +114,7 @@ changing it later requires republishing everything.
 
 In the dashboard at `https://ota.acadion.xyz`:
 
-- **Name:** OAT E2E
+- **Name:** expo-custom-ota E2E
 - **Slug:** `oat-e2e`
 - **Android package:** `xyz.acadion.oate2e`
 - **iOS bundle identifier:** `xyz.acadion.oate2e`
@@ -161,7 +161,7 @@ Java 26, which is what is installed on the machine I checked.
 
 If you prefer the cloud: `bunx eas build --platform android --profile preview` produces an
 installable APK without a local SDK. That uses EAS *Build*, which is unrelated to EAS *Update* —
-updates still come from OAT.
+updates still come from expo-custom-ota.
 
 Install it, launch it, and confirm it shows **VERSION A** with `isEmbeddedLaunch: true`.
 
@@ -227,7 +227,7 @@ signature verifies — much faster than a build cycle when something is wrong.
 
 When the checklist passes, tick Phase 12 in `docs/roadmap.md` and paste a successful
 `update_served` logcat trace and a `noUpdateAvailable` trace into `docs/troubleshooting.md` as
-reference output. Then OAT is production-ready by the definition in `expo-oat.md` §61.
+reference output. Then expo-custom-ota is production-ready by the definition in `expo-oat.md` §61.
 
 iOS follows the same checklist and must pass independently — a working Android path proves
 nothing about the iOS client's certificate handling.

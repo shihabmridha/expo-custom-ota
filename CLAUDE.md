@@ -1,4 +1,4 @@
-# OAT — agent working notes
+# expo-custom-ota — agent working notes
 
 Self-hosted, multi-application OTA update server compatible with `expo-updates` and the
 **Expo Updates v1 protocol**. Replaces EAS Update. Admin uploads an `expo export` archive
@@ -93,7 +93,7 @@ PowerShell: `--filter '*'` needs single quotes. cmd.exe: use `"*"`.
 
 ## Conventions
 
-- Package names are `@oat/*`, all `private: true`, `type: module`, exporting raw `.ts` via
+- Package names are `@ota/*`, all `private: true`, `type: module`, exporting raw `.ts` via
   `exports`. No build step for internal packages.
 - IDs: `crypto.randomUUID()` in `text` primary keys. Update IDs must be UUID-formatted —
   the client calls `UUID.fromString` on them.

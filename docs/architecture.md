@@ -59,7 +59,7 @@ request.
 ### Runtime version comes from the release, not the request
 
 The official reference server copies the client's `expo-runtime-version` header into the
-manifest, which means it asserts whatever the client claims. OAT stores the runtime version per
+manifest, which means it asserts whatever the client claims. expo-custom-ota stores the runtime version per
 release variant at import time and emits that.
 
 ### Published releases are immutable

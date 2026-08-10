@@ -24,7 +24,7 @@ if (!openssl) {
   );
 }
 
-const scratch = mkdtempSync(join(tmpdir(), 'oat-openssl-'));
+const scratch = mkdtempSync(join(tmpdir(), 'ota-openssl-'));
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
 async function run(args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {

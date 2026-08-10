@@ -1,5 +1,5 @@
-import type { OatDatabase } from '@oat/db';
-import type { AssetStorage } from '@oat/types';
+import type { OtaDatabase } from '@ota/db';
+import type { AssetStorage } from '@ota/types';
 import type { Env } from './config/env.ts';
 import type { Logger } from './lib/logger.ts';
 import type { SessionAdmin } from './services/auth.ts';
@@ -7,7 +7,7 @@ import type { SessionAdmin } from './services/auth.ts';
 /** Context bound to every Hono request. */
 export interface AppEnv {
   Variables: {
-    db: OatDatabase;
+    db: OtaDatabase;
     storage: AssetStorage;
     env: Env;
     logger: Logger;

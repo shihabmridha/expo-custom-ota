@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { OatDatabase } from '@oat/db';
-import * as schema from '@oat/db/schema/index';
+import type { OtaDatabase } from '@ota/db';
+import * as schema from '@ota/db/schema/index';
 import { eq } from 'drizzle-orm';
 import { strToU8, zipSync } from 'fflate';
 import { createLogger } from '../src/lib/logger.ts';
@@ -45,7 +45,7 @@ function realArchive(overrides: Record<string, Uint8Array | null> = {}): Uint8Ar
   return zipSync(files);
 }
 
-let db: OatDatabase;
+let db: OtaDatabase;
 let storage: MemoryStorage;
 let applicationId: string;
 

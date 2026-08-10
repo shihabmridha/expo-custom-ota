@@ -16,7 +16,7 @@ behaviour is identical in both.
 
 ## Run scripts from the repository root
 
-Bun loads `.env` from the working directory, and `file:./oat.db` and `./.storage` resolve from
+Bun loads `.env` from the working directory, and `file:./ota.db` and `./.storage` resolve from
 it too. Running a database script from inside `packages/db` would silently create a second,
 empty database. All cwd-sensitive scripts therefore live in the root `package.json`.
 
@@ -61,7 +61,7 @@ official reference server, and the actual client source, with the places they di
 Do not re-derive it from memory; several of the details are counter-intuitive (signature and
 hash use *different* base64 alphabets, and "no update" is a 200, not a 404).
 
-`packages/protocol` must not import from Hono, Drizzle, `@oat/db` or `node:fs`. Keeping it pure
+`packages/protocol` must not import from Hono, Drizzle, `@ota/db` or `node:fs`. Keeping it pure
 is what makes it testable without a server.
 
 ## Adding an endpoint

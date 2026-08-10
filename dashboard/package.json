@@ -1,5 +1,5 @@
 {
-  "name": "@oat/dashboard",
+  "name": "@ota/dashboard",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,10 +10,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@oat/api-client": "workspace:*",
-    "@oat/api-sdk": "workspace:*",
-    "@oat/contracts": "workspace:*",
-    "@oat/types": "workspace:*",
+    "@ota/api-client": "workspace:*",
+    "@ota/api-sdk": "workspace:*",
+    "@ota/contracts": "workspace:*",
+    "@ota/types": "workspace:*",
     "@tanstack/react-query": "^5.90.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

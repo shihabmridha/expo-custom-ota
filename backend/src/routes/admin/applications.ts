@@ -1,5 +1,5 @@
-import { contracts } from '@oat/contracts';
-import * as schema from '@oat/db/schema/index';
+import { contracts } from '@ota/contracts';
+import * as schema from '@ota/db/schema/index';
 import {
   buildDirectiveResponse,
   buildUpdateResponse,
@@ -8,7 +8,7 @@ import {
   parseBoundary,
   rollBackToEmbeddedDirective,
   verifySignature,
-} from '@oat/protocol';
+} from '@ota/protocol';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import type { AppEnv } from '../../app-env.ts';

@@ -8,12 +8,12 @@ import {
   type RoutePath,
   type RouteQuery,
   type RouteResponse,
-} from '@oat/contracts';
+} from '@ota/contracts';
 
 /**
  * Typed API client, derived entirely from the contract registry.
  *
- * Adding a route to `@oat/contracts` adds a typed method here with no edit to
+ * Adding a route to `@ota/contracts` adds a typed method here with no edit to
  * this file.
  */
 

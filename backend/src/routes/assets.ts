@@ -1,5 +1,5 @@
-import { assets } from '@oat/db';
-import { ASSET_CACHE_CONTROL } from '@oat/protocol';
+import { assets } from '@ota/db';
+import { ASSET_CACHE_CONTROL } from '@ota/protocol';
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import type { AppEnv } from '../app-env.ts';

@@ -1,4 +1,4 @@
-import type { ExpoDirective, ExpoExtensions } from '@oat/types';
+import type { ExpoDirective, ExpoExtensions } from '@ota/types';
 import { serializeDirective } from './directives.ts';
 import type { ProtocolError } from './errors.ts';
 import {

@@ -1,4 +1,4 @@
-import { DEPLOYMENT_ACTIONS, PLATFORMS } from '@oat/types';
+import { DEPLOYMENT_ACTIONS, PLATFORMS } from '@ota/types';
 import { sql } from 'drizzle-orm';
 import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { createdAt, uuidPk } from './_shared.ts';

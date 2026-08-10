@@ -1,4 +1,4 @@
-import { type ExpoClientConfig, type ExportMetadata, PLATFORMS, type Platform } from '@oat/types';
+import { type ExpoClientConfig, type ExportMetadata, PLATFORMS, type Platform } from '@ota/types';
 import { z } from 'zod';
 
 /**

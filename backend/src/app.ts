@@ -1,5 +1,5 @@
-import type { OatDatabase } from '@oat/db';
-import type { AssetStorage } from '@oat/types';
+import type { OtaDatabase } from '@ota/db';
+import type { AssetStorage } from '@ota/types';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import type { AppEnv } from './app-env.ts';
@@ -19,7 +19,7 @@ import { PublishError } from './services/publishing.ts';
 
 export interface AppDependencies {
   env: Env;
-  db: OatDatabase;
+  db: OtaDatabase;
   storage: AssetStorage;
   logger?: Logger;
 }
@@ -124,4 +124,4 @@ export function createApp(deps: AppDependencies) {
   return app;
 }
 
-export type OatApp = ReturnType<typeof createApp>;
+export type OtaApp = ReturnType<typeof createApp>;

@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { createDb } from '@oat/db';
-import * as schema from '@oat/db/schema/index';
+import { createDb } from '@ota/db';
+import * as schema from '@ota/db/schema/index';
 import { eq } from 'drizzle-orm';
 import { loadEnv } from '../src/config/env.ts';
 import { createApplication, generateSigningKey } from '../src/services/applications.ts';
@@ -10,7 +10,7 @@ import { createApplication, generateSigningKey } from '../src/services/applicati
 /**
  * Prepare an application for device verification.
  *
- * Creates the OAT E2E application if it does not exist, ensures it has an
+ * Creates the expo-custom-ota E2E application if it does not exist, ensures it has an
  * active signing key, writes the certificate into the test app, and prints the
  * URL to build with.
  *
@@ -40,7 +40,7 @@ if (application) {
   console.log(`Reusing existing application "${SLUG}".`);
 } else {
   application = await createApplication(db, {
-    name: 'OAT E2E',
+    name: 'expo-custom-ota E2E',
     slug: SLUG,
     androidPackage: PACKAGE,
     iosBundleIdentifier: PACKAGE,
@@ -80,7 +80,7 @@ if (activeKey[0] && activeKey[0].status === 'active' && !forceRotate) {
     applicationId: application.id,
     applicationSlug: SLUG,
     keyId: 'main',
-    commonName: 'OAT E2E',
+    commonName: 'expo-custom-ota E2E',
     validityYears: 10,
   });
   certificatePem = generated.certificatePem;
@@ -98,7 +98,7 @@ console.log(
   `\nCertificate written to e2e/expo-test-app/certs/certificate.pem${certChanged ? '' : ' (refreshed)'}`,
 );
 console.log('\nBuild the test app with:\n');
-console.log(`  OAT_UPDATE_URL=${updateUrl} \\`);
+console.log(`  OTA_UPDATE_URL=${updateUrl} \\`);
 console.log('    bunx expo run:android --variant release\n');
 
 if (env.OTA_PUBLIC_URL.includes('localhost') || env.OTA_PUBLIC_URL.includes('127.0.0.1')) {

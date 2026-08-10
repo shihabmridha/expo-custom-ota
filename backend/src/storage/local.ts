@@ -1,6 +1,6 @@
 import { mkdir, stat, unlink } from 'node:fs/promises';
 import { dirname, join, resolve, sep } from 'node:path';
-import type { AssetStorage } from '@oat/types';
+import type { AssetStorage } from '@ota/types';
 
 /**
  * Filesystem-backed object storage for development.

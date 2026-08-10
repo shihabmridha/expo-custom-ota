@@ -26,7 +26,7 @@ export async function runMigrations(config: DbConfig): Promise<void> {
 }
 
 if (import.meta.main) {
-  const url = process.env.DATABASE_URL ?? 'file:./oat.db';
+  const url = process.env.DATABASE_URL ?? 'file:./ota.db';
   const authToken = process.env.DATABASE_AUTH_TOKEN;
 
   console.log(`Applying migrations to ${url.startsWith('file:') ? url : '(remote libSQL)'}…`);

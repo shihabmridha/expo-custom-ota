@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import type { OatDatabase } from '@oat/db';
-import * as schema from '@oat/db/schema/index';
+import type { OtaDatabase } from '@ota/db';
+import * as schema from '@ota/db/schema/index';
 import { and, eq } from 'drizzle-orm';
 import { createLogger } from '../src/lib/logger.ts';
 import {
@@ -12,9 +12,9 @@ import {
 import { SigningService } from '../src/services/signing.ts';
 import { createMigratedDb, createTestApp, MemoryStorage, seedApplication } from './helpers.ts';
 
-let db: OatDatabase;
+let db: OtaDatabase;
 let storage: MemoryStorage;
-let deps: { db: OatDatabase; logger: ReturnType<typeof createLogger>; signing: SigningService };
+let deps: { db: OtaDatabase; logger: ReturnType<typeof createLogger>; signing: SigningService };
 
 beforeEach(() => {
   db = createMigratedDb();

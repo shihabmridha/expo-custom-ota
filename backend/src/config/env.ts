@@ -12,7 +12,7 @@ import { z } from 'zod';
  * Everything anchors to the **repository root**, not the working directory.
  * Bun auto-loads `.env` from cwd, so launching the server from `backend/`
  * — which `bun run --filter '*' dev` does — would otherwise miss the root
- * `.env` entirely, silently fall back to the default `file:./oat.db`, and
+ * `.env` entirely, silently fall back to the default `file:./ota.db`, and
  * create a second, empty database. The failure surfaces much later as
  * "no such table: admins".
  */
@@ -82,7 +82,7 @@ const schema = z
       .transform((u) => u.replace(/\/+$/, ''))
       .default('http://localhost:3000'),
 
-    DATABASE_URL: z.string().min(1).default('file:./oat.db'),
+    DATABASE_URL: z.string().min(1).default('file:./ota.db'),
     DATABASE_AUTH_TOKEN: z.string().optional(),
 
     STORAGE_DRIVER: z.enum(['local', 'r2']).default('local'),

@@ -4,7 +4,7 @@ prompt = no
 x509_extensions = v3
 
 [dn]
-CN = OAT Test Signing
+CN = expo-custom-ota Test Signing
 
 [v3]
 keyUsage = critical, digitalSignature

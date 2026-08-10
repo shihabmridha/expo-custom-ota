@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { createDb } from '@oat/db';
-import * as schema from '@oat/db/schema/index';
+import { createDb } from '@ota/db';
+import * as schema from '@ota/db/schema/index';
 import {
   assetStorageKey,
   buildManifest,
@@ -13,7 +13,7 @@ import {
   platformsInExport,
   resolveRuntimeVersion,
   serializeManifest,
-} from '@oat/protocol';
+} from '@ota/protocol';
 import { loadEnv } from '../src/config/env.ts';
 import { createStorage } from '../src/storage/index.ts';
 

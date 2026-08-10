@@ -33,7 +33,7 @@ export default defineConfig({
   schema: fromCwd('src', 'schema', 'index.ts'),
   out: fromCwd('migrations'),
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? 'file:./oat.db',
+    url: process.env.DATABASE_URL ?? 'file:./ota.db',
     ...(process.env.DATABASE_AUTH_TOKEN ? { authToken: process.env.DATABASE_AUTH_TOKEN } : {}),
   },
   strict: true,

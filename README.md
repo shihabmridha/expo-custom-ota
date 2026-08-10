@@ -1,4 +1,4 @@
-# OAT
+# expo-custom-ota
 
 A self-hosted, multi-application OTA update server for Expo apps. Implements the
 **Expo Updates v1 protocol**, so the stock `expo-updates` client talks to it with no
@@ -7,7 +7,7 @@ patches — you change a URL, not a library.
 Replaces EAS Update for teams that want to host their own updates.
 
 ```
-Developer                    OAT                         Device
+Developer                    expo-custom-ota                         Device
   expo export  ──▶  upload ──▶ validate, hash, sign  ──▶  signed manifest
                               store assets by SHA-256     immutable assets
 ```
@@ -50,7 +50,7 @@ and upload the resulting `update.zip` from **Releases → Upload**.
 ## Commands
 
 All of these run from the repository root — Bun loads `.env` from the working directory, and
-`file:./oat.db` resolves from it too.
+`file:./ota.db` resolves from it too.
 
 | Command | Does |
 |---|---|
@@ -99,7 +99,7 @@ See [docs/deployment.md](docs/deployment.md).
 | | |
 |---|---|
 | [architecture.md](docs/architecture.md) | How the pieces fit, and the invariants that hold them together |
-| [development.md](docs/development.md) | Working on OAT |
+| [development.md](docs/development.md) | Working on expo-custom-ota |
 | [deployment.md](docs/deployment.md) | Running it in production |
 | [client-setup.md](docs/client-setup.md) | Configuring an Expo app |
 | [device-verification.md](docs/device-verification.md) | Phase 12: proving updates reach a real device |

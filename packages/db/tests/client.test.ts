@@ -21,7 +21,7 @@ describe('checkDatabaseUrl', () => {
     ['libsql://localhost:8080?tls=0', 'explicitly opts out of TLS'],
     ['http://localhost:8080', 'plain HTTP is unambiguous'],
     ['https://localhost:8080', 'caller asked for TLS deliberately'],
-    ['file:./oat.db', 'local file'],
+    ['file:./ota.db', 'local file'],
     ['libsql://oat-acadion.turso.io', 'Turso cloud genuinely has TLS'],
     ['libsql://db-org.turso.io?authToken=x', 'Turso with a token'],
   ])('allows %s (%s)', (url) => {
@@ -35,8 +35,8 @@ describe('checkDatabaseUrl', () => {
 
 describe('isFileUrl', () => {
   test.each([
-    ['file:./oat.db', true],
-    ['file:/data/oat.db', true],
+    ['file:./ota.db', true],
+    ['file:/data/ota.db', true],
     ['http://localhost:8080', false],
     ['libsql://db.turso.io', false],
   ])('%s -> %s', (url, expected) => {
@@ -46,19 +46,19 @@ describe('isFileUrl', () => {
 
 describe('resolveFileUrl', () => {
   test('resolves a relative path against the given working directory', () => {
-    // Bun loads .env from cwd and `file:./oat.db` resolves from it too, so a
+    // Bun loads .env from cwd and `file:./ota.db` resolves from it too, so a
     // script run from a subdirectory would otherwise open a different database.
     const base = resolve('/srv/oat');
-    expect(resolveFileUrl('file:./oat.db', base)).toBe(join(base, 'oat.db'));
+    expect(resolveFileUrl('file:./ota.db', base)).toBe(join(base, 'ota.db'));
   });
 
   test('leaves an absolute path alone', () => {
-    const absolute = resolve('/data/oat.db');
+    const absolute = resolve('/data/ota.db');
     expect(resolveFileUrl(`file:${absolute}`, resolve('/somewhere/else'))).toBe(absolute);
   });
 
   test('strips the // in file://', () => {
     const base = resolve('/srv/oat');
-    expect(resolveFileUrl('file://oat.db', base)).toBe(join(base, 'oat.db'));
+    expect(resolveFileUrl('file://ota.db', base)).toBe(join(base, 'ota.db'));
   });
 });

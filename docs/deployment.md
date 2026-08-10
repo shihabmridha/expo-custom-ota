@@ -34,7 +34,7 @@ environment swaps:
 
 | | Local (default) | Production |
 |---|---|---|
-| Database | `DATABASE_URL=file:/data/oat.db` | `DATABASE_URL=libsql://…` + `DATABASE_AUTH_TOKEN` |
+| Database | `DATABASE_URL=file:/data/ota.db` | `DATABASE_URL=libsql://…` + `DATABASE_AUTH_TOKEN` |
 | Storage | `STORAGE_DRIVER=local` | `STORAGE_DRIVER=r2` + `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` |
 
 Set `R2_PUBLIC_URL` to serve asset bytes straight from the bucket instead of proxying them

@@ -1,5 +1,5 @@
-import type { OatDatabase } from '@oat/db';
-import * as schema from '@oat/db/schema/index';
+import type { OtaDatabase } from '@ota/db';
+import * as schema from '@ota/db/schema/index';
 import {
   assetStorageKey,
   buildManifest,
@@ -12,13 +12,13 @@ import {
   referencedPaths,
   resolveRuntimeVersion,
   serializeManifest,
-} from '@oat/protocol';
+} from '@ota/protocol';
 import {
   type AssetStorage,
   EXPO_CONFIG_FILENAME,
   EXPORT_METADATA_FILENAME,
   type ExpoClientConfig,
-} from '@oat/types';
+} from '@ota/types';
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Logger } from '../../lib/logger.ts';
 import type { SigningService } from '../signing.ts';
@@ -49,7 +49,7 @@ export class ImportError extends Error {
 }
 
 export interface ImportDependencies {
-  db: OatDatabase;
+  db: OtaDatabase;
   storage: AssetStorage;
   signing: SigningService;
   logger: Logger;
@@ -80,7 +80,7 @@ export interface ImportOutcome {
  * release_number)` backs it up.
  */
 async function allocateRelease(
-  db: OatDatabase,
+  db: OtaDatabase,
   input: ImportInput,
 ): Promise<{ releaseId: string; releaseNumber: number }> {
   const releaseId = crypto.randomUUID();

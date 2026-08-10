@@ -1,4 +1,4 @@
-import { applications } from '@oat/db';
+import { applications } from '@ota/db';
 import {
   buildDirectiveResponse,
   buildErrorResponse,
@@ -8,7 +8,7 @@ import {
   type ProtocolHttpResponse,
   parseExpoUpdateRequest,
   rollBackToEmbeddedDirective,
-} from '@oat/protocol';
+} from '@ota/protocol';
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import type { AppEnv } from '../app-env.ts';

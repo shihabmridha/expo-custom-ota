@@ -6,9 +6,9 @@ import {
   generateKeyPair,
   generateSelfSignedCodeSigningCertificate,
 } from '@expo/code-signing-certificates';
-import type { OatDatabase } from '@oat/db';
-import * as schema from '@oat/db/schema/index';
-import { certificateInfo } from '@oat/protocol';
+import type { OtaDatabase } from '@ota/db';
+import * as schema from '@ota/db/schema/index';
+import { certificateInfo } from '@ota/protocol';
 import { and, desc, eq, sql } from 'drizzle-orm';
 
 /**
@@ -38,7 +38,7 @@ export function generateUpdateKey(): string {
 }
 
 export async function createApplication(
-  db: OatDatabase,
+  db: OtaDatabase,
   input: {
     name: string;
     slug: string;
@@ -95,7 +95,7 @@ export async function createApplication(
  * database, never returned by the API, and never reaches the dashboard.
  */
 export async function generateSigningKey(
-  db: OatDatabase,
+  db: OtaDatabase,
   keysDirectory: string,
   input: {
     applicationId: string;
@@ -160,7 +160,7 @@ export async function generateSigningKey(
 }
 
 /** Everything the dashboard's list view shows, in one pass. */
-export async function listApplicationSummaries(db: OatDatabase, publicUrl: string) {
+export async function listApplicationSummaries(db: OtaDatabase, publicUrl: string) {
   const apps = await db
     .select()
     .from(schema.applications)

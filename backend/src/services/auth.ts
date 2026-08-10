@@ -1,5 +1,5 @@
-import type { OatDatabase } from '@oat/db';
-import * as schema from '@oat/db/schema/index';
+import type { OtaDatabase } from '@ota/db';
+import * as schema from '@ota/db/schema/index';
 import { and, eq, gt, lt } from 'drizzle-orm';
 
 /**
@@ -15,7 +15,7 @@ export interface SessionAdmin {
   name: string | null;
 }
 
-export const SESSION_COOKIE = 'oat_session';
+export const SESSION_COOKIE = 'ota_session';
 
 function hashToken(token: string): string {
   return new Bun.CryptoHasher('sha256').update(token).digest('hex');
@@ -40,7 +40,7 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function verifyCredentials(
-  db: OatDatabase,
+  db: OtaDatabase,
   email: string,
   password: string,
 ): Promise<SessionAdmin | null> {
@@ -65,7 +65,7 @@ export async function verifyCredentials(
 }
 
 export async function createSession(
-  db: OatDatabase,
+  db: OtaDatabase,
   adminId: string,
   ttlHours: number,
   meta: { ipHash?: string | undefined; userAgent?: string | undefined } = {},
@@ -85,7 +85,7 @@ export async function createSession(
   return { token, expiresAt };
 }
 
-export async function resolveSession(db: OatDatabase, token: string): Promise<SessionAdmin | null> {
+export async function resolveSession(db: OtaDatabase, token: string): Promise<SessionAdmin | null> {
   const rows = await db
     .select({
       sessionId: schema.sessions.id,
@@ -115,16 +115,16 @@ export async function resolveSession(db: OatDatabase, token: string): Promise<Se
   return { id: row.id, email: row.email, name: row.name };
 }
 
-export async function destroySession(db: OatDatabase, token: string): Promise<void> {
+export async function destroySession(db: OtaDatabase, token: string): Promise<void> {
   await db.delete(schema.sessions).where(eq(schema.sessions.tokenHash, hashToken(token)));
 }
 
-export async function purgeExpiredSessions(db: OatDatabase): Promise<void> {
+export async function purgeExpiredSessions(db: OtaDatabase): Promise<void> {
   await db.delete(schema.sessions).where(lt(schema.sessions.expiresAt, new Date()));
 }
 
 export async function createAdmin(
-  db: OatDatabase,
+  db: OtaDatabase,
   input: { email: string; password: string; name?: string },
 ): Promise<SessionAdmin> {
   const id = crypto.randomUUID();

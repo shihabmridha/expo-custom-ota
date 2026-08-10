@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 /**
- * OAT end-to-end verification app.
+ * expo-custom-ota end-to-end verification app.
  *
  * Change VERSION, re-export, upload, publish — then confirm the device shows
  * the new letter. Everything else on screen exists to make a failure legible

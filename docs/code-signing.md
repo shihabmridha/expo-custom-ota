@@ -14,7 +14,7 @@ interchangeable.
 |---|---|---|
 | Signs | the APK/AAB (or IPA) | the update **manifest** |
 | Verified by | Android / Play Store, at install | `expo-updates`, at runtime |
-| Lives | your keystore, or Play App Signing | the OAT server, under `SIGNING_KEYS_DIRECTORY` |
+| Lives | your keystore, or Play App Signing | the expo-custom-ota server, under `SIGNING_KEYS_DIRECTORY` |
 | Format | JKS/PKCS12 keystore | PEM private key + X.509 certificate |
 | Algorithm | RSA or EC | **RSA only** (`rsa-v1_5-sha256`) |
 | Rotating it | new app identity; users reinstall | existing releases must be republished |
@@ -38,10 +38,10 @@ onto the update server. A compromise there currently lets an attacker serve Java
 devices that already trust you; with the app signing key present it would also let them sign
 installable packages. Keeping them separate contains the blast radius.
 
-OAT rejects both cases when a certificate is saved, rather than letting them fail on device.
+expo-custom-ota rejects both cases when a certificate is saved, rather than letting them fail on device.
 
-**What to do instead:** nothing extra. OAT generates a dedicated code signing key when you
-create an application. Keep using your existing keystore to build the APK, and embed OAT's
+**What to do instead:** nothing extra. expo-custom-ota generates a dedicated code signing key when you
+create an application. Keep using your existing keystore to build the APK, and embed expo-custom-ota's
 certificate for updates. The two never meet.
 
 ## How it works
@@ -134,7 +134,7 @@ which is the fastest way to confirm a release is servable before touching a devi
 ## Unsigned applications
 
 An application with no signing key serves unsigned updates. That works for a client that is not
-configured for code signing, and OAT returns a clear `SIGNING_UNAVAILABLE` error rather than
+configured for code signing, and expo-custom-ota returns a clear `SIGNING_UNAVAILABLE` error rather than
 silently serving unsigned bytes when a client asks for a signature.
 
 Do not run production this way.

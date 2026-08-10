@@ -77,7 +77,7 @@ describe('signing', () => {
 describe('certificateInfo', () => {
   test('reads the test certificate', () => {
     const info = certificateInfo(TEST_CERT_PEM);
-    expect(info.subject).toContain('OAT Test Signing');
+    expect(info.subject).toContain('expo-custom-ota Test Signing');
     expect(info.isSelfSigned).toBe(true);
     expect(info.fingerprintSha256).toMatch(/^([0-9A-F]{2}:){31}[0-9A-F]{2}$/);
     expect(info.notAfter.getTime()).toBeGreaterThan(Date.now());

@@ -1,7 +1,7 @@
 import { join } from 'node:path';
-import type { OatDatabase } from '@oat/db';
-import { applicationSigningKeys } from '@oat/db';
-import { createSigner, type Signer, serializeSignatureHeader } from '@oat/protocol';
+import type { OtaDatabase } from '@ota/db';
+import { applicationSigningKeys } from '@ota/db';
+import { createSigner, type Signer, serializeSignatureHeader } from '@ota/protocol';
 import { and, eq } from 'drizzle-orm';
 
 /**
@@ -25,7 +25,7 @@ export class SigningService {
   private readonly signers = new Map<string, Signer>();
 
   constructor(
-    private readonly db: OatDatabase,
+    private readonly db: OtaDatabase,
     private readonly keysDirectory: string,
   ) {}
 

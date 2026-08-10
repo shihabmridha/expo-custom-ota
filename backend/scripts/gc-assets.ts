@@ -1,5 +1,5 @@
-import { createDb } from '@oat/db';
-import * as schema from '@oat/db/schema/index';
+import { createDb } from '@ota/db';
+import * as schema from '@ota/db/schema/index';
 import { lt, notInArray, sql } from 'drizzle-orm';
 import { loadEnv } from '../src/config/env.ts';
 import { createStorage } from '../src/storage/index.ts';

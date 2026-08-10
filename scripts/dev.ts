@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
  * Both are spawned with the **repository root** as their working directory.
  * `bun run --filter '*' dev` runs each workspace script in its own directory,
  * which meant the backend never saw the root `.env`, silently fell back to the
- * default `file:./oat.db`, and created an empty `backend/oat.db`. The failure
+ * default `file:./ota.db`, and created an empty `backend/ota.db`. The failure
  * only surfaced later as "no such table: admins".
  *
  * Bun's script shell has no background operator (`&`), so this does the

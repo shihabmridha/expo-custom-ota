@@ -11,14 +11,14 @@ export default defineConfig({
     // Bun resolves workspace packages' raw .ts through "exports"; Vite does not
     // reliably, so alias them explicitly.
     alias: {
-      '@oat/api-client': r('../packages/api-client/src/index.ts'),
-      '@oat/api-sdk': r('../packages/api-sdk/src/index.ts'),
-      '@oat/contracts': r('../packages/contracts/src/index.ts'),
-      '@oat/types': r('../packages/types/src/index.ts'),
+      '@ota/api-client': r('../packages/api-client/src/index.ts'),
+      '@ota/api-sdk': r('../packages/api-sdk/src/index.ts'),
+      '@ota/contracts': r('../packages/contracts/src/index.ts'),
+      '@ota/types': r('../packages/types/src/index.ts'),
     },
   },
   optimizeDeps: {
-    exclude: ['@oat/api-client', '@oat/api-sdk', '@oat/contracts', '@oat/types'],
+    exclude: ['@ota/api-client', '@ota/api-sdk', '@ota/contracts', '@ota/types'],
   },
   server: {
     port: 5173,

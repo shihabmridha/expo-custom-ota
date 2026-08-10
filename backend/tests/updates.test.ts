@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import type { OatDatabase } from '@oat/db';
-import { extractPartBody, parseBoundary, verifySignature } from '@oat/protocol';
+import type { OtaDatabase } from '@ota/db';
+import { extractPartBody, parseBoundary, verifySignature } from '@ota/protocol';
 import {
   clientHeaders,
   createMigratedDb,
@@ -10,7 +10,7 @@ import {
   TEST_CERT_PEM,
 } from './helpers.ts';
 
-let db: OatDatabase;
+let db: OtaDatabase;
 let storage: MemoryStorage;
 let app: ReturnType<typeof createTestApp>['app'];
 
@@ -260,7 +260,7 @@ describe('multi-application isolation', () => {
 
 describe('rollBackToEmbedded', () => {
   async function deployRollback(applicationId: string, channelId: string) {
-    const { deployments } = await import('@oat/db');
+    const { deployments } = await import('@ota/db');
     const { and, eq } = await import('drizzle-orm');
     await db
       .update(deployments)

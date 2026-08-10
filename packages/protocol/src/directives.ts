@@ -2,7 +2,7 @@ import type {
   ExpoDirective,
   NoUpdateAvailableDirective,
   RollBackToEmbeddedDirective,
-} from '@oat/types';
+} from '@ota/types';
 
 /**
  * Update directives.

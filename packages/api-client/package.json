@@ -1,5 +1,5 @@
 {
-  "name": "@oat/api-client",
+  "name": "@ota/api-client",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,8 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@oat/contracts": "workspace:*",
-    "@oat/types": "workspace:*",
+    "@ota/contracts": "workspace:*",
+    "@ota/types": "workspace:*",
     "zod": "^4.1.13"
   }
 }

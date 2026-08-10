@@ -1,4 +1,4 @@
-import { ApiError } from '@oat/api-client';
+import { ApiError } from '@ota/api-client';
 import { QueryClient } from '@tanstack/react-query';
 
 export const queryClient = new QueryClient({

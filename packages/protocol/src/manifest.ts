@@ -1,4 +1,4 @@
-import type { ExpoAsset, ExpoClientConfig, ExpoManifest } from '@oat/types';
+import type { ExpoAsset, ExpoClientConfig, ExpoManifest } from '@ota/types';
 import { CT_JAVASCRIPT } from './headers.ts';
 
 /**

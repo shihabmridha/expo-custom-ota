@@ -1,4 +1,4 @@
-import type { AssetStorage } from '@oat/types';
+import type { AssetStorage } from '@ota/types';
 import { S3Client } from 'bun';
 
 /**

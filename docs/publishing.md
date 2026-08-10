@@ -78,7 +78,7 @@ This deploys a `rollBackToEmbedded` directive telling clients to discard downloa
 run the bundle embedded in their binary — the version that shipped through the app store. It is
 the only mechanism that un-ships an update without publishing new JavaScript.
 
-The client honours it only if it reports an `expo-embedded-update-id`; otherwise OAT degrades to
+The client honours it only if it reports an `expo-embedded-update-id`; otherwise expo-custom-ota degrades to
 `noUpdateAvailable` rather than serving something the device cannot act on.
 
 Publishing a normal release to the same target clears the directive.

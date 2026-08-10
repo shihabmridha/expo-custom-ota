@@ -1,5 +1,5 @@
 {
-  "name": "@oat/protocol",
+  "name": "@ota/protocol",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@oat/types": "workspace:*",
+    "@ota/types": "workspace:*",
     "structured-headers": "^2.0.1",
     "zod": "^4.1.13"
   }

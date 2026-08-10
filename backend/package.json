@@ -1,5 +1,5 @@
 {
-  "name": "@oat/backend",
+  "name": "@ota/backend",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,10 +11,10 @@
   "dependencies": {
     "@expo/code-signing-certificates": "^0.0.6",
     "@hono/zod-validator": "^0.7.4",
-    "@oat/contracts": "workspace:*",
-    "@oat/db": "workspace:*",
-    "@oat/protocol": "workspace:*",
-    "@oat/types": "workspace:*",
+    "@ota/contracts": "workspace:*",
+    "@ota/db": "workspace:*",
+    "@ota/protocol": "workspace:*",
+    "@ota/types": "workspace:*",
     "fflate": "^0.8.2",
     "hono": "^4.10.6",
     "zod": "^4.1.13"

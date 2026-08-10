@@ -1,4 +1,4 @@
-# OAT roadmap
+# expo-custom-ota roadmap
 
 **CURRENT PHASE: 12 — VPS pass + iOS**
 
@@ -36,7 +36,7 @@ clean clone.
 - [x] Hand-rolled `multipart/mixed` writer (Web `FormData` cannot express per-part headers)
 - [x] WebCrypto signing (`RSASSA-PKCS1-v1_5` / SHA-256)
 
-**Acceptance:** `packages/protocol` imports nothing from `hono`, `drizzle-orm`, `@oat/db`, or
+**Acceptance:** `packages/protocol` imports nothing from `hono`, `drizzle-orm`, `@ota/db`, or
 `node:fs`.
 
 ## Phase 2 — Protocol tests · **HARD GATE**

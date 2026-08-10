@@ -1,16 +1,16 @@
 import { Database } from 'bun:sqlite';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { OatDatabase } from '@oat/db';
-import * as schema from '@oat/db/schema/index';
+import type { OtaDatabase } from '@ota/db';
+import * as schema from '@ota/db/schema/index';
 import {
   assetStorageKey,
   buildManifest,
   createSigner,
   digestAsset,
   serializeManifest,
-} from '@oat/protocol';
-import type { AssetStorage, Platform } from '@oat/types';
+} from '@ota/protocol';
+import type { AssetStorage, Platform } from '@ota/types';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { createApp } from '../src/app.ts';
 import { loadEnv } from '../src/config/env.ts';
@@ -29,7 +29,7 @@ export const SIGNING_FIXTURES = join(
 
 export const TEST_CERT_PEM = readFileSync(join(SIGNING_FIXTURES, 'test-cert.pem'), 'utf8');
 
-export function createMigratedDb(): OatDatabase {
+export function createMigratedDb(): OtaDatabase {
   const sqlite = new Database(':memory:');
   sqlite.exec('PRAGMA foreign_keys = ON;');
 
@@ -45,7 +45,7 @@ export function createMigratedDb(): OatDatabase {
     }
   }
 
-  return drizzle({ client: sqlite, schema }) as unknown as OatDatabase;
+  return drizzle({ client: sqlite, schema }) as unknown as OtaDatabase;
 }
 
 /** In-memory storage, so tests never touch the filesystem. */
@@ -80,7 +80,7 @@ export class MemoryStorage implements AssetStorage {
   }
 }
 
-export function createTestApp(db: OatDatabase, storage: AssetStorage = new MemoryStorage()) {
+export function createTestApp(db: OtaDatabase, storage: AssetStorage = new MemoryStorage()) {
   const env = loadEnv({
     NODE_ENV: 'test',
     OTA_PUBLIC_URL: 'http://localhost:3000',
@@ -114,7 +114,7 @@ export interface SeededApplication {
  * importer will once it exists.
  */
 export async function seedApplication(
-  db: OatDatabase,
+  db: OtaDatabase,
   storage: AssetStorage,
   options: SeedOptions,
 ): Promise<SeededApplication> {

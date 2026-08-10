@@ -41,7 +41,7 @@ export function AppShell() {
       <header className="border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <Link to="/applications" className="font-semibold tracking-tight">
-            OAT
+            expo-custom-ota
             <span className="ml-2 text-sm font-normal text-neutral-500">OTA Updates</span>
           </Link>
           <div className="flex items-center gap-3 text-sm">

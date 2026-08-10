@@ -1,4 +1,4 @@
-import { SIGNING_KEY_STATUSES } from '@oat/types';
+import { SIGNING_KEY_STATUSES } from '@ota/types';
 import { sql } from 'drizzle-orm';
 import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { timestamps, uuidPk } from './_shared.ts';

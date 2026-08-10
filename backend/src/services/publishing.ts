@@ -1,7 +1,7 @@
-import type { OatDatabase } from '@oat/db';
-import * as schema from '@oat/db/schema/index';
-import { buildManifest, serializeManifest } from '@oat/protocol';
-import type { DeploymentAction, Platform } from '@oat/types';
+import type { OtaDatabase } from '@ota/db';
+import * as schema from '@ota/db/schema/index';
+import { buildManifest, serializeManifest } from '@ota/protocol';
+import type { DeploymentAction, Platform } from '@ota/types';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Logger } from '../lib/logger.ts';
 import type { SigningService } from './signing.ts';
@@ -28,7 +28,7 @@ export class PublishError extends Error {
 }
 
 export interface PublishDeps {
-  db: OatDatabase;
+  db: OtaDatabase;
   logger: Logger;
   signing?: SigningService;
 }
@@ -47,7 +47,7 @@ interface VariantRow {
   updateId: string;
 }
 
-async function loadPublishableRelease(db: OatDatabase, releaseId: string) {
+async function loadPublishableRelease(db: OtaDatabase, releaseId: string) {
   const rows = await db
     .select()
     .from(schema.releases)
@@ -73,7 +73,7 @@ async function loadPublishableRelease(db: OatDatabase, releaseId: string) {
  * Looking it up by name alone would allow publishing one application's release
  * into another's channel — the isolation invariant is enforced here.
  */
-async function resolveChannel(db: OatDatabase, applicationId: string, name: string) {
+async function resolveChannel(db: OtaDatabase, applicationId: string, name: string) {
   const rows = await db
     .select()
     .from(schema.channels)
@@ -88,7 +88,7 @@ async function resolveChannel(db: OatDatabase, applicationId: string, name: stri
 }
 
 async function loadVariants(
-  db: OatDatabase,
+  db: OtaDatabase,
   releaseId: string,
   platforms?: Platform[],
 ): Promise<VariantRow[]> {
@@ -116,7 +116,7 @@ async function loadVariants(
 
 /** Upsert one deployment and record the change. */
 async function deploy(
-  db: OatDatabase,
+  db: OtaDatabase,
   args: {
     applicationId: string;
     channelId: string;

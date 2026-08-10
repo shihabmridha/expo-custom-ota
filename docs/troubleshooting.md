@@ -15,13 +15,13 @@ The client was configured for code signing and got an unsigned response.
 - The application has no active signing key → **Signing** tab → generate one, then **republish**
   the affected releases. Signing happens at import time, so existing releases stay unsigned.
 - The response was a *directive* (`noUpdateAvailable` / `rollBackToEmbedded`) rather than a
-  manifest. Directives must be signed too. OAT does this; if you see it, check the server logs
+  manifest. Directives must be signed too. expo-custom-ota does this; if you see it, check the server logs
   for `signing_failure`.
 
 ## The client logs "Key with keyid=… not found in client configuration"
 
 `codeSigningMetadata.keyid` in your `app.json` does not match the `keyid` the server signed
-with. OAT uses `main` by default. Copy the snippet from **Client setup** verbatim — it contains
+with. expo-custom-ota uses `main` by default. Copy the snippet from **Client setup** verbatim — it contains
 the correct value.
 
 This one is unforgiving: the client rejects the update outright rather than falling back.
@@ -73,7 +73,7 @@ Work through, in order:
 1. **Runtime version.** The device's `expo-runtime-version` must match a deployment *exactly* —
    it is an opaque string, never compared semantically. `1.0.0` and `1.0` are different runtimes.
 2. **Channel.** Devices send `expo-channel-name` via `updates.requestHeaders`. If it is absent,
-   OAT falls back to the application's default channel. Check what the device is actually
+   expo-custom-ota falls back to the application's default channel. Check what the device is actually
    sending.
 3. **Platform.** A release with only an Android variant serves nothing to iOS.
 4. **Already current.** If `expo-current-update-id` equals the deployed update id, this is
@@ -81,7 +81,7 @@ Work through, in order:
 
 ## The device never updates, and there is nothing in the server logs
 
-The request is not reaching OAT.
+The request is not reaching expo-custom-ota.
 
 - `updates.url` still points at `u.expo.dev`, or at the wrong update key.
 - Updates are **disabled in development builds**. Test against a release build.
@@ -169,7 +169,7 @@ bun run dev:api    # correct
 cd backend && bun src/server.ts   # env is still resolved from the repo root, but prefer the above
 ```
 
-Delete any stray `backend/oat.db`, then `bun run db:migrate`. The server now refuses to start
+Delete any stray `backend/ota.db`, then `bun run db:migrate`. The server now refuses to start
 against an unmigrated database rather than failing on the first login.
 
 ## Login returns 429

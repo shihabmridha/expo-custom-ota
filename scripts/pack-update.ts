@@ -4,7 +4,7 @@ import { join, relative, resolve } from 'node:path';
 import { zipSync } from 'fflate';
 
 /**
- * Package an Expo export for upload to OAT.
+ * Package an Expo export for upload to expo-custom-ota.
  *
  * `expo export` produces `dist/`, but **not** `expoConfig.json` — and that file
  * becomes `manifest.extra.expoClient`, which is what populates
@@ -64,12 +64,12 @@ try {
   const runtimeVersion = exp.runtimeVersion;
   if (!runtimeVersion) {
     console.warn(
-      '\n⚠  No runtimeVersion in your app config. OAT requires an explicit string ' +
+      '\n⚠  No runtimeVersion in your app config. expo-custom-ota requires an explicit string ' +
         '(a policy cannot be resolved server-side). The upload will be rejected.\n',
     );
   } else if (typeof runtimeVersion === 'object') {
     console.warn(
-      `\n⚠  runtimeVersion uses the "${runtimeVersion.policy}" policy. OAT requires an explicit ` +
+      `\n⚠  runtimeVersion uses the "${runtimeVersion.policy}" policy. expo-custom-ota requires an explicit ` +
         'string, because the server cannot compute a policy. The upload will be rejected.\n',
     );
   } else {
@@ -118,4 +118,6 @@ console.log(
   `  ${(archive.byteLength / 1024 / 1024).toFixed(1)} MB · ${Object.keys(files).length} files`,
 );
 console.log(`  platforms: ${platforms.join(', ') || '(none)'}`);
-console.log('\nUpload it from the OAT dashboard: Applications → your app → Releases → Upload.');
+console.log(
+  '\nUpload it from the expo-custom-ota dashboard: Applications → your app → Releases → Upload.',
+);

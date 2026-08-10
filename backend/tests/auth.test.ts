@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { buildPath, contracts } from '@oat/contracts';
-import type { OatDatabase } from '@oat/db';
-import * as schema from '@oat/db/schema/index';
+import { buildPath, contracts } from '@ota/contracts';
+import type { OtaDatabase } from '@ota/db';
+import * as schema from '@ota/db/schema/index';
 import { eq } from 'drizzle-orm';
 import { isOriginAllowed } from '../src/middleware/admin.ts';
 import { createAdmin } from '../src/services/auth.ts';
 import { createMigratedDb, createTestApp, MemoryStorage } from './helpers.ts';
 
-let db: OatDatabase;
+let db: OtaDatabase;
 let app: ReturnType<typeof createTestApp>['app'];
 
 const EMAIL = 'admin@example.com';
@@ -33,7 +33,7 @@ async function login(): Promise<string> {
   const response = await post('/api/admin/auth/login', { email: EMAIL, password: PASSWORD });
   expect(response.status).toBe(200);
   const cookie = response.headers.get('set-cookie');
-  expect(cookie).toContain('oat_session=');
+  expect(cookie).toContain('ota_session=');
   return cookie!.split(';')[0]!;
 }
 

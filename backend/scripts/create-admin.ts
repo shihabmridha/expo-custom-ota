@@ -1,4 +1,4 @@
-import { createDb } from '@oat/db';
+import { createDb } from '@ota/db';
 import { loadEnv } from '../src/config/env.ts';
 import { createAdmin } from '../src/services/auth.ts';
 

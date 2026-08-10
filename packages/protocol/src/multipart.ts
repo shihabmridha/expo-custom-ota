@@ -1,4 +1,4 @@
-import type { MultipartPartName } from '@oat/types';
+import type { MultipartPartName } from '@ota/types';
 import { CT_JSON, H_CONTENT_DISPOSITION, H_CONTENT_TYPE } from './headers.ts';
 
 /**

@@ -1,6 +1,6 @@
-import type { OatDatabase } from '@oat/db';
-import { usageDaily } from '@oat/db';
-import type { Platform, UpdateRequestResult } from '@oat/types';
+import type { OtaDatabase } from '@ota/db';
+import { usageDaily } from '@ota/db';
+import type { Platform, UpdateRequestResult } from '@ota/types';
 import { sql } from 'drizzle-orm';
 
 /**
@@ -14,7 +14,7 @@ function utcDay(now = new Date()): string {
 }
 
 export async function recordUpdateRequest(
-  db: OatDatabase,
+  db: OtaDatabase,
   applicationId: string,
   platform: Platform,
   result: UpdateRequestResult,

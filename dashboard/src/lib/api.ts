@@ -1,4 +1,4 @@
-import { ApiError, createApiClient } from '@oat/api-client';
+import { ApiError, createApiClient } from '@ota/api-client';
 
 /**
  * The dashboard is served same-origin in both dev (through Vite's `/api` proxy)

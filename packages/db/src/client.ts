@@ -29,7 +29,7 @@ import * as schema from './schema/index.ts';
  * other to it. The runtime APIs we use are identical; the query builders of
  * both drivers are thenable, so `await` works either way.
  */
-export type OatDatabase = LibSQLDatabase<typeof schema>;
+export type OtaDatabase = LibSQLDatabase<typeof schema>;
 
 export interface DbConfig {
   url: string;
@@ -39,7 +39,7 @@ export interface DbConfig {
 /**
  * Resolve a `file:` URL to an absolute path.
  *
- * Bun loads `.env` from the current working directory and `file:./oat.db`
+ * Bun loads `.env` from the current working directory and `file:./ota.db`
  * resolves from it too, so a script run from a package directory would
  * otherwise silently create a second, empty database.
  */
@@ -90,7 +90,7 @@ export function checkDatabaseUrl(url: string): string | null {
   );
 }
 
-export function createDb(config: DbConfig): OatDatabase {
+export function createDb(config: DbConfig): OtaDatabase {
   const problem = checkDatabaseUrl(config.url);
   if (problem) throw new Error(problem);
 
@@ -103,7 +103,7 @@ export function createDb(config: DbConfig): OatDatabase {
     sqlite.exec('PRAGMA journal_mode = WAL;');
     sqlite.exec('PRAGMA busy_timeout = 5000;');
 
-    return drizzleBunSqlite({ client: sqlite, schema }) as unknown as OatDatabase;
+    return drizzleBunSqlite({ client: sqlite, schema }) as unknown as OtaDatabase;
   }
 
   const client = createClient({
@@ -114,11 +114,11 @@ export function createDb(config: DbConfig): OatDatabase {
 }
 
 /** In-memory database for tests. Foreign keys on, same schema. */
-export function createTestDb(): { db: OatDatabase; sqlite: Database } {
+export function createTestDb(): { db: OtaDatabase; sqlite: Database } {
   const sqlite = new Database(':memory:');
   sqlite.exec('PRAGMA foreign_keys = ON;');
   return {
-    db: drizzleBunSqlite({ client: sqlite, schema }) as unknown as OatDatabase,
+    db: drizzleBunSqlite({ client: sqlite, schema }) as unknown as OtaDatabase,
     sqlite,
   };
 }

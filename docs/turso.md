@@ -1,11 +1,11 @@
 # Turso and libSQL
 
-OAT stores everything relational in libSQL. Three ways to run it, all the same schema and the
+expo-custom-ota stores everything relational in libSQL. Three ways to run it, all the same schema and the
 same generated SQL.
 
 | Setup | `DATABASE_URL` | Driver |
 |---|---|---|
-| Local file | `file:./oat.db` | `bun:sqlite` |
+| Local file | `file:./ota.db` | `bun:sqlite` |
 | Local server (`turso dev`, `sqld`) | `http://localhost:8080` | `@libsql/client/web` |
 | Turso cloud | `libsql://<db>-<org>.turso.io` + `DATABASE_AUTH_TOKEN` | `@libsql/client/web` |
 
@@ -44,7 +44,7 @@ the first query.
 The simplest option needs nothing installed:
 
 ```bash
-DATABASE_URL=file:./oat.db
+DATABASE_URL=file:./ota.db
 bun run db:migrate
 ```
 

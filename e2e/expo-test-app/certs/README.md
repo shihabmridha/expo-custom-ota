@@ -2,7 +2,7 @@
 
 Put the application's code signing certificate here as `certificate.pem`.
 
-Get it from the OAT dashboard: **your application → Signing → certificate.pem**, or
+Get it from the expo-custom-ota dashboard: **your application → Signing → certificate.pem**, or
 **Client setup**, which shows it alongside the matching `app.json` snippet.
 
 This is a **public** certificate and is meant to be committed. It gets embedded in the binary,

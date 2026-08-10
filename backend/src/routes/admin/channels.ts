@@ -1,4 +1,4 @@
-import * as schema from '@oat/db/schema/index';
+import * as schema from '@ota/db/schema/index';
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import type { AppEnv } from '../../app-env.ts';

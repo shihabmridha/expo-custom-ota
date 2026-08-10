@@ -12,7 +12,7 @@ services:
       # Local libSQL + filesystem storage by default. For Turso, set
       # DATABASE_URL=libsql://... and DATABASE_AUTH_TOKEN. For R2, set
       # STORAGE_DRIVER=r2 and the R2_* variables.
-      DATABASE_URL: ${DATABASE_URL:-file:/data/oat.db}
+      DATABASE_URL: ${DATABASE_URL:-file:/data/ota.db}
       DATABASE_AUTH_TOKEN: ${DATABASE_AUTH_TOKEN:-}
       STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
       R2_ENDPOINT: ${R2_ENDPOINT:-}
@@ -24,8 +24,8 @@ services:
       # Holds the libSQL file, asset objects and — critically — the private
       # signing keys. Losing this volume means every app must be re-signed and
       # every installed binary re-released.
-      - oat-data:/data
+      - ota-data:/data
     restart: unless-stopped
 
 volumes:
-  oat-data:
+  ota-data:

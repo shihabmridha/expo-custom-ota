@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createDb } from '@oat/db';
-import * as schema from '@oat/db/schema/index';
+import { createDb } from '@ota/db';
+import * as schema from '@ota/db/schema/index';
 import { and, eq } from 'drizzle-orm';
 import { loadEnv } from '../src/config/env.ts';
 import { createLogger } from '../src/lib/logger.ts';

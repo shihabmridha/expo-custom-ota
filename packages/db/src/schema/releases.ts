@@ -4,7 +4,7 @@ import {
   PLATFORMS,
   RELEASE_ASSET_TYPES,
   RELEASE_STATUSES,
-} from '@oat/types';
+} from '@ota/types';
 import { sql } from 'drizzle-orm';
 import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { createdAt, timestamps, uuidPk } from './_shared.ts';

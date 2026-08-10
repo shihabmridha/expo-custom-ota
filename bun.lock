@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "oat",
+      "name": "expo-custom-ota",
       "devDependencies": {
         "@biomejs/biome": "^2.3.14",
         "@types/bun": "^1.3.14",
@@ -14,28 +14,28 @@
       },
     },
     "backend": {
-      "name": "@oat/backend",
+      "name": "@ota/backend",
       "version": "0.1.0",
       "dependencies": {
         "@expo/code-signing-certificates": "^0.0.6",
         "@hono/zod-validator": "^0.7.4",
-        "@oat/contracts": "workspace:*",
-        "@oat/db": "workspace:*",
-        "@oat/protocol": "workspace:*",
-        "@oat/types": "workspace:*",
+        "@ota/contracts": "workspace:*",
+        "@ota/db": "workspace:*",
+        "@ota/protocol": "workspace:*",
+        "@ota/types": "workspace:*",
         "fflate": "^0.8.2",
         "hono": "^4.10.6",
         "zod": "^4.1.13",
       },
     },
     "dashboard": {
-      "name": "@oat/dashboard",
+      "name": "@ota/dashboard",
       "version": "0.1.0",
       "dependencies": {
-        "@oat/api-client": "workspace:*",
-        "@oat/api-sdk": "workspace:*",
-        "@oat/contracts": "workspace:*",
-        "@oat/types": "workspace:*",
+        "@ota/api-client": "workspace:*",
+        "@ota/api-sdk": "workspace:*",
+        "@ota/contracts": "workspace:*",
+        "@ota/types": "workspace:*",
         "@tanstack/react-query": "^5.90.5",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
@@ -51,37 +51,37 @@
       },
     },
     "packages/api-client": {
-      "name": "@oat/api-client",
+      "name": "@ota/api-client",
       "version": "0.1.0",
       "dependencies": {
-        "@oat/contracts": "workspace:*",
-        "@oat/types": "workspace:*",
+        "@ota/contracts": "workspace:*",
+        "@ota/types": "workspace:*",
         "zod": "^4.1.13",
       },
     },
     "packages/api-sdk": {
-      "name": "@oat/api-sdk",
+      "name": "@ota/api-sdk",
       "version": "0.1.0",
       "dependencies": {
-        "@oat/api-client": "workspace:*",
-        "@oat/contracts": "workspace:*",
-        "@oat/types": "workspace:*",
+        "@ota/api-client": "workspace:*",
+        "@ota/contracts": "workspace:*",
+        "@ota/types": "workspace:*",
       },
     },
     "packages/contracts": {
-      "name": "@oat/contracts",
+      "name": "@ota/contracts",
       "version": "0.1.0",
       "dependencies": {
-        "@oat/types": "workspace:*",
+        "@ota/types": "workspace:*",
         "zod": "^4.1.13",
       },
     },
     "packages/db": {
-      "name": "@oat/db",
+      "name": "@ota/db",
       "version": "0.1.0",
       "dependencies": {
         "@libsql/client": "^0.17.4",
-        "@oat/types": "workspace:*",
+        "@ota/types": "workspace:*",
         "drizzle-orm": "^0.45.2",
       },
       "devDependencies": {
@@ -89,16 +89,16 @@
       },
     },
     "packages/protocol": {
-      "name": "@oat/protocol",
+      "name": "@ota/protocol",
       "version": "0.1.0",
       "dependencies": {
-        "@oat/types": "workspace:*",
+        "@ota/types": "workspace:*",
         "structured-headers": "^2.0.1",
         "zod": "^4.1.13",
       },
     },
     "packages/types": {
-      "name": "@oat/types",
+      "name": "@ota/types",
       "version": "0.1.0",
     },
   },
@@ -261,21 +261,21 @@
 
     "@neon-rs/load": ["@neon-rs/load@0.0.4", "", {}, "sha512-kTPhdZyTQxB+2wpiRcFWrDcejc4JI6tkPuS7UZCG4l6Zvc5kU/gGQ/ozvHTh1XR5tS+UlfAfGuPajjzQjCiHCw=="],
 
-    "@oat/api-client": ["@oat/api-client@workspace:packages/api-client"],
+    "@ota/api-client": ["@ota/api-client@workspace:packages/api-client"],
 
-    "@oat/api-sdk": ["@oat/api-sdk@workspace:packages/api-sdk"],
+    "@ota/api-sdk": ["@ota/api-sdk@workspace:packages/api-sdk"],
 
-    "@oat/backend": ["@oat/backend@workspace:backend"],
+    "@ota/backend": ["@ota/backend@workspace:backend"],
 
-    "@oat/contracts": ["@oat/contracts@workspace:packages/contracts"],
+    "@ota/contracts": ["@ota/contracts@workspace:packages/contracts"],
 
-    "@oat/dashboard": ["@oat/dashboard@workspace:dashboard"],
+    "@ota/dashboard": ["@ota/dashboard@workspace:dashboard"],
 
-    "@oat/db": ["@oat/db@workspace:packages/db"],
+    "@ota/db": ["@ota/db@workspace:packages/db"],
 
-    "@oat/protocol": ["@oat/protocol@workspace:packages/protocol"],
+    "@ota/protocol": ["@ota/protocol@workspace:packages/protocol"],
 
-    "@oat/types": ["@oat/types@workspace:packages/types"],
+    "@ota/types": ["@ota/types@workspace:packages/types"],
 
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.0-rc.3", "", {}, "sha512-eybk3TjzzzV97Dlj5c+XrBFW57eTNhzod66y9HrBlzJ6NsCrWCp/2kaPS3K9wJmurBC0Tdw4yPjXKZqlznim3Q=="],
 

@@ -1,4 +1,4 @@
-import { contracts } from '@oat/contracts';
+import { contracts } from '@ota/contracts';
 import { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { AppEnv } from '../../app-env.ts';

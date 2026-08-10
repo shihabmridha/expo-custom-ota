@@ -1,4 +1,4 @@
-import type { AssetStorage } from '@oat/types';
+import type { AssetStorage } from '@ota/types';
 import type { Env } from '../config/env.ts';
 import { LocalAssetStorage } from './local.ts';
 import { R2AssetStorage } from './r2.ts';

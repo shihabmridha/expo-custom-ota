@@ -1,4 +1,4 @@
-import { createDb, type OatDatabase } from '@oat/db';
+import { createDb, type OtaDatabase } from '@ota/db';
 import { sql } from 'drizzle-orm';
 import { createApp } from './app.ts';
 import { type Env, loadEnv } from './config/env.ts';
@@ -27,7 +27,7 @@ const storage = createStorage(env);
  * the cause, and which looks identical whether migrations were never run or the
  * server is pointed at the wrong database entirely. Both are worth naming.
  */
-async function assertMigrated(database: OatDatabase, current: Env): Promise<void> {
+async function assertMigrated(database: OtaDatabase, current: Env): Promise<void> {
   const where = current.DATABASE_URL.startsWith('file:') ? current.DATABASE_URL : '(remote libSQL)';
 
   let hasSchema: boolean;

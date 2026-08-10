@@ -1,5 +1,5 @@
 {
-  "name": "@oat/db",
+  "name": "@ota/db",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@libsql/client": "^0.17.4",
-    "@oat/types": "workspace:*",
+    "@ota/types": "workspace:*",
     "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {

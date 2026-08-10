@@ -1,4 +1,4 @@
-import { PLATFORMS, UPDATE_REQUEST_RESULTS } from '@oat/types';
+import { PLATFORMS, UPDATE_REQUEST_RESULTS } from '@ota/types';
 import { sql } from 'drizzle-orm';
 import { check, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { uuidPk } from './_shared.ts';

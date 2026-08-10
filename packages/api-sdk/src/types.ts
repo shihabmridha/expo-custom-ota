@@ -1,4 +1,4 @@
-import type { contracts, RouteResponse } from '@oat/contracts';
+import type { contracts, RouteResponse } from '@ota/contracts';
 
 /**
  * Response types, inferred from the contracts rather than restated — so they

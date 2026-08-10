@@ -1,6 +1,6 @@
 # Client setup
 
-Configuring an Expo app to receive updates from OAT. The dashboard's **Client setup** tab
+Configuring an Expo app to receive updates from expo-custom-ota. The dashboard's **Client setup** tab
 generates all of this for your application — prefer copying from there, since it fills in the
 real URL and keyid.
 
@@ -31,7 +31,7 @@ Install `expo-updates` if you have not: `bunx expo install expo-updates`.
 
 **`runtimeVersion` must be an explicit string.** A policy (`appVersion`, `nativeVersion`,
 `fingerprint`) is resolved at native build time from the project's state — a server cannot
-compute one. OAT rejects uploads that use a policy, with a message saying so.
+compute one. expo-custom-ota rejects uploads that use a policy, with a message saying so.
 
 The runtime version is an **opaque string** matched exactly. `1.0.0` and `1.0` are different
 runtimes. It exists to stop JavaScript that needs new native code from reaching a binary that
@@ -39,9 +39,9 @@ does not have it, so change it whenever you change native dependencies.
 
 **The channel is not a protocol header.** It travels through the generic `requestHeaders`
 mechanism as `expo-channel-name`. Anything you put in `requestHeaders` is sent on every update
-request. If the header is absent, OAT falls back to the application's default channel.
+request. If the header is absent, expo-custom-ota falls back to the application's default channel.
 
-**`codeSigningMetadata.keyid` must match exactly.** OAT signs as `main` by default. A mismatch
+**`codeSigningMetadata.keyid` must match exactly.** expo-custom-ota signs as `main` by default. A mismatch
 makes the client reject every update with "Key with keyid=… not found in client configuration" —
 it does not fall back to unsigned.
 
@@ -62,7 +62,7 @@ bunx expo-updates codesigning:configure \
   --key-input-directory ../keys
 ```
 
-but note that OAT holds the private key, so generate the pair in OAT and only bring the
+but note that expo-custom-ota holds the private key, so generate the pair in expo-custom-ota and only bring the
 certificate over.
 
 ## Verifying before you build
@@ -104,6 +104,6 @@ Any header you want to override at runtime must already be declared in
 
 ## Failure behaviour
 
-OTA must never be required for the app to start. If OAT is offline, the network times out, no
+OTA must never be required for the app to start. If expo-custom-ota is offline, the network times out, no
 deployment exists, or the manifest request fails, the app keeps running its embedded or last
 cached bundle. Do not build startup logic that blocks on an update check.

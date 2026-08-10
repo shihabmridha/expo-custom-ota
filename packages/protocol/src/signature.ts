@@ -1,5 +1,5 @@
 import { createPrivateKey, createPublicKey, X509Certificate } from 'node:crypto';
-import { CODE_SIGNING_ALGORITHM } from '@oat/types';
+import { CODE_SIGNING_ALGORITHM } from '@ota/types';
 import { serializeSignatureHeader } from './sfv.ts';
 
 /**
@@ -151,7 +151,7 @@ const CODE_SIGNING_EKU_OID = '1.3.6.1.5.5.7.3.3';
  *
  * Note: Node's `X509Certificate` exposes extended key usage but not the
  * individual keyUsage bits, so the `digitalSignature` bit is not checked here.
- * Certificates OAT generates set both, via Expo's own generator.
+ * Certificates expo-custom-ota generates set both, via Expo's own generator.
  */
 export function validateCodeSigningCertificate(certificatePem: string, now = new Date()): string[] {
   const problems: string[] = [];

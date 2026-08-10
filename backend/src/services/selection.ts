@@ -1,6 +1,6 @@
-import type { OatDatabase } from '@oat/db';
-import { channels, deployments, releaseVariants } from '@oat/db';
-import type { SelectUpdateInput, UpdateDecision } from '@oat/protocol';
+import type { OtaDatabase } from '@ota/db';
+import { channels, deployments, releaseVariants } from '@ota/db';
+import type { SelectUpdateInput, UpdateDecision } from '@ota/protocol';
 import { and, eq } from 'drizzle-orm';
 
 /**
@@ -13,7 +13,7 @@ import { and, eq } from 'drizzle-orm';
  * broken.
  */
 export async function selectUpdate(
-  db: OatDatabase,
+  db: OtaDatabase,
   input: SelectUpdateInput,
 ): Promise<UpdateDecision> {
   const rows = await db

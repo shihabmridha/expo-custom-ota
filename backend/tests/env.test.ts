@@ -9,12 +9,12 @@ import { findRepoRoot, loadEnv } from '../src/config/env.ts';
  *
  * `bun run --filter '*' dev` runs each workspace script in its own directory,
  * so the backend started with cwd=backend/, never saw the root `.env`, silently
- * fell back to the default `file:./oat.db`, and created an empty
- * `backend/oat.db`. The first login then failed with "no such table: admins" —
+ * fell back to the default `file:./ota.db`, and created an empty
+ * `backend/ota.db`. The first login then failed with "no such table: admins" —
  * an error pointing at the query rather than the cause.
  */
 
-const scratch = mkdtempSync(join(tmpdir(), 'oat-env-'));
+const scratch = mkdtempSync(join(tmpdir(), 'ota-env-'));
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
 describe('findRepoRoot', () => {
@@ -33,7 +33,7 @@ describe('findRepoRoot', () => {
   });
 
   test('falls back to cwd rather than looping forever', () => {
-    const isolated = mkdtempSync(join(tmpdir(), 'oat-noroot-'));
+    const isolated = mkdtempSync(join(tmpdir(), 'ota-noroot-'));
     expect(() => findRepoRoot(isolated)).not.toThrow();
     rmSync(isolated, { recursive: true, force: true });
   });
@@ -49,8 +49,8 @@ describe('path resolution', () => {
   });
 
   test('a relative file: database is resolved against the repo root', () => {
-    const env = loadEnv({ NODE_ENV: 'test', DATABASE_URL: 'file:./oat.db' });
-    expect(env.DATABASE_URL).toBe(`file:${join(env.repoRoot, 'oat.db')}`);
+    const env = loadEnv({ NODE_ENV: 'test', DATABASE_URL: 'file:./ota.db' });
+    expect(env.DATABASE_URL).toBe(`file:${join(env.repoRoot, 'ota.db')}`);
   });
 
   test('an absolute file: database is left alone', () => {
@@ -123,7 +123,7 @@ describe('.env discovery', () => {
   test('reads a repo-root .env when the process environment lacks the value', () => {
     // Simulated: a fake workspace root with its own .env, resolved from a
     // nested directory the way backend/src/config would be.
-    const root = mkdtempSync(join(tmpdir(), 'oat-fake-root-'));
+    const root = mkdtempSync(join(tmpdir(), 'ota-fake-root-'));
     writeFileSync(
       join(root, 'package.json'),
       JSON.stringify({ name: 'fake', workspaces: ['packages/*'] }),

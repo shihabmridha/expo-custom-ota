@@ -1,4 +1,4 @@
-import { isPlatform, type Platform } from '@oat/types';
+import { isPlatform, type Platform } from '@ota/types';
 import { err, ok, type ProtocolResult } from './errors.ts';
 import {
   H_ACCEPT,

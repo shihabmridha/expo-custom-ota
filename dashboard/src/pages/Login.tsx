@@ -31,7 +31,7 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-6">
       <Card className="w-full max-w-sm">
-        <h1 className="mb-1 text-lg font-semibold">Sign in to OAT</h1>
+        <h1 className="mb-1 text-lg font-semibold">Sign in to expo-custom-ota</h1>
         <p className="mb-5 text-sm text-neutral-500">
           There is no public registration. Create the first administrator with{' '}
           <code className="font-mono text-xs">bun run admin:create</code>.

@@ -1,4 +1,4 @@
-import type { Platform } from '@oat/types';
+import type { Platform } from '@ota/types';
 
 /**
  * Update selection.
