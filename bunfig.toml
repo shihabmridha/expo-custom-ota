@@ -1,0 +1,6 @@
+[install]
+# Workspace packages export raw TypeScript; Bun resolves .ts through "exports".
+exact = false
+
+[test]
+coverage = false

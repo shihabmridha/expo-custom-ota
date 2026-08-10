@@ -1,0 +1,20 @@
+{
+  "version": 0,
+  "bundler": "metro",
+  "fileMetadata": {
+    "android": {
+      "bundle": "_expo/static/js/android/index-269f9765b312aba7cd48ad2f628ab412.hbc",
+      "assets": [
+        { "path": "assets\\cb975bba2216ce10a60e6c0ffe9941a2", "ext": "png" },
+        { "path": "assets\\97dae5a0e62ad8551d8a31897b425e63", "ext": "png" }
+      ]
+    },
+    "ios": {
+      "bundle": "_expo/static/js/ios/index-54632058317480773732e6925ee1a93e.hbc",
+      "assets": [
+        { "path": "assets\\cb975bba2216ce10a60e6c0ffe9941a2", "ext": "png" },
+        { "path": "assets\\97dae5a0e62ad8551d8a31897b425e63", "ext": "png" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,23 @@
+# Normalize line endings for source. Without this, a Windows checkout writes CRLF
+# and a Linux container writes LF, and any test that hashes a source file diverges.
+* text=auto eol=lf
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.sql  text eol=lf
+
+# ---------------------------------------------------------------------------
+# CRITICAL: test fixtures must be byte-exact.
+#
+# Expo asset hashes are SHA-256 over raw file bytes. If Git applies CRLF
+# conversion to a fixture (metadata.json, a JS bundle, expoConfig.json), its
+# hash changes on a Windows checkout and every manifest/signature test fails
+# in a way that looks like a crypto bug but is actually line endings.
+# `-text` disables all conversion; `-diff` keeps binaries out of diffs.
+# ---------------------------------------------------------------------------
+**/fixtures/**   -text -diff
+**/tests/fixtures/** -text -diff
+*.zip  binary
+*.hbc  binary
+*.pem  -text -diff

@@ -1,0 +1,18 @@
+{
+  "name": "@oat/api-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@oat/api-client": "workspace:*",
+    "@oat/contracts": "workspace:*",
+    "@oat/types": "workspace:*"
+  }
+}

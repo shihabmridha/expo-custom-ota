@@ -1,0 +1,21 @@
+{
+  "name": "@oat/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot src/server.ts",
+    "start": "bun src/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/zod-validator": "^0.7.4",
+    "@oat/contracts": "workspace:*",
+    "@oat/db": "workspace:*",
+    "@oat/protocol": "workspace:*",
+    "@oat/types": "workspace:*",
+    "fflate": "^0.8.2",
+    "hono": "^4.10.6",
+    "zod": "^4.1.13"
+  }
+}

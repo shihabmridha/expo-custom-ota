@@ -1,0 +1,17 @@
+{
+  "name": "@oat/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@oat/types": "workspace:*",
+    "zod": "^4.1.13"
+  }
+}

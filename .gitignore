@@ -1,0 +1,30 @@
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# Local dev database (libSQL file mode)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Local asset storage driver output
+.storage/
+
+# Signing material — private keys must never be committed
+.signing-keys/
+*.pem
+!**/test/**/*.pem
+!**/tests/**/*.pem
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Temp upload staging
+.tmp/
+
+.DS_Store
+Thumbs.db

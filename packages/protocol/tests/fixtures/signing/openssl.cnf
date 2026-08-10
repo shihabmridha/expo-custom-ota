@@ -1,0 +1,12 @@
+[req]
+distinguished_name = dn
+prompt = no
+x509_extensions = v3
+
+[dn]
+CN = OAT Test Signing
+
+[v3]
+keyUsage = critical, digitalSignature
+extendedKeyUsage = critical, codeSigning
+basicConstraints = critical, CA:FALSE
