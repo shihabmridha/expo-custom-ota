@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+dist
+**/dist
+.git
+.storage
+.signing-keys
+*.db
+*.db-*
+.env
+.env.*
+!.env.example
+.tmp
+**/*.tsbuildinfo
+docs
+*.md
+!README.md

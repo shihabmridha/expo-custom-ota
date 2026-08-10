@@ -1,11 +1,13 @@
 # OAT roadmap
 
-**CURRENT PHASE: 4 — contracts / api-client / api-sdk**
+**CURRENT PHASE: 12 — Real-device Android/iOS verification**
 
-Phases 0–3 and 5/7 (the public protocol path) are done. The server serves signed updates from a
-real Expo export today: `bun run backend/scripts/dev-seed.ts` then `bun dev:api`, and the manifest
-it returns verifies under `openssl dgst -sha256 -verify`. What remains is the admin surface —
-contracts, importer, auth, publishing, dashboard.
+Phases 0–11 are complete: protocol, database, contracts, backend, importer, publishing, auth,
+dashboard, Docker and docs. Every flow is verified end-to-end over real HTTP — upload, publish,
+promote, roll back, kill-switch — with the served manifest signature confirmed by
+`openssl dgst -verify`.
+
+What remains needs physical devices.
 
 Tick boxes as work lands. Each phase lists the acceptance check that proves it is done.
 A phase is not done until its acceptance check actually passes — not when the code "looks right".
@@ -63,10 +65,10 @@ constraint tests green, including a FK violation that actually throws.
 
 ## Phase 4 — `contracts` / `api-client` / `api-sdk`
 
-- [ ] `RouteDef` + typed `PathParams<P>`; routes grouped by domain
-- [ ] `createApiClient` with response validation and typed `ApiError`
-- [ ] `api-sdk`: `uploadRelease`, `waitForImport`, `publishAndWait`
-- [ ] Backend `validated()` helper over `@hono/zod-validator`
+- [x] `RouteDef` + typed `PathParams<P>`; routes grouped by domain
+- [x] `createApiClient` with response validation and typed `ApiError`
+- [x] `api-sdk`: `uploadRelease`, `waitForImport`, `publishAndWait`
+- [x] Backend `validated()` helper over `@hono/zod-validator`
 
 **Acceptance:** deleting a field from a contract schema causes a compile error in **both**
 backend and dashboard.
@@ -76,19 +78,19 @@ backend and dashboard.
 - [x] Hono composition, `config/env.ts` (fail-fast Zod), context + error middleware
 - [x] `AssetStorage` interface + `local` and `r2` (`Bun.S3Client`) drivers
 - [x] Structured JSON logging with spec §43 event names and key redaction
-- [ ] In-memory rate limiting (moved to Phase 8, alongside the login route it protects)
+- [x] In-memory rate limiting (moved to Phase 8, alongside the login route it protects)
 
 **Acceptance:** `GET /health` returns `{ ok, version, dbOk, storageOk }`; a missing env var prints
 every issue and exits non-zero; both storage drivers pass one shared contract test.
 
 ## Phase 6 — Release importer
 
-- [ ] `ZipArchive` interface over `fflate` (escape hatch: `DecompressionStream('deflate-raw')`)
-- [ ] Path allowlist derived from `metadata.json` — read only what is named, never walk
-- [ ] Size / entry-count / ratio limits enforced pre-inflation **and** re-checked post-inflation
-- [ ] Raw `application/zip` upload body (not `formData` — Bun buffers that entirely)
-- [ ] Identity validation, runtime discovery, streaming hash, dedup, sign, draft release
-- [ ] State machine `uploaded → processing → assets_uploaded → ready | failed`, idempotency
+- [x] `ZipArchive` interface over `fflate` (escape hatch: `DecompressionStream('deflate-raw')`)
+- [x] Path allowlist derived from `metadata.json` — read only what is named, never walk
+- [x] Size / entry-count / ratio limits enforced pre-inflation **and** re-checked post-inflation
+- [x] Raw `application/zip` upload body (not `formData` — Bun buffers that entirely)
+- [x] Identity validation, runtime discovery, streaming hash, dedup, sign, draft release
+- [x] State machine `uploaded → processing → assets_uploaded → ready | failed`, idempotency
 
 **Acceptance:** uploading the fixture ZIP yields a `ready` draft whose manifest signature verifies
 through the Phase 2 openssl path. Traversal / bomb / wrong-identity tests all reject.
@@ -105,37 +107,37 @@ manifest verifies under openssl. App A never receives App B's release.
 
 ## Phase 8 — Admin auth
 
-- [ ] argon2id via `Bun.password`, sessions storing only a token hash
-- [ ] Cookie flags per env, sliding expiry, logout, Origin-based CSRF check
-- [ ] Login rate limit (argon2id costs ~101 ms — an unlimited login route is a CPU DoS)
-- [ ] `admin:create` script; no registration route
+- [x] argon2id via `Bun.password`, sessions storing only a token hash
+- [x] Cookie flags per env, sliding expiry, logout, Origin-based CSRF check
+- [x] Login rate limit (argon2id costs ~101 ms — an unlimited login route is a CPU DoS)
+- [x] `admin:create` script; no registration route
 
 **Acceptance:** a table-driven test enumerates the contracts registry and asserts every
 `auth: 'admin'` route 401s unauthenticated — cannot go stale as routes are added.
 
 ## Phase 9 — Publish / promote / rollback
 
-- [ ] `db.batch()` + `ON CONFLICT DO UPDATE`; no read-modify-write anywhere
-- [ ] Promotion reuses the identical `release_variant_id` — no re-sign, no asset copy
-- [ ] Rollback creates a new release with fresh ids/manifests over the same asset rows
-- [ ] Published-release immutability
+- [x] `db.batch()` + `ON CONFLICT DO UPDATE`; no read-modify-write anywhere
+- [x] Promotion reuses the identical `release_variant_id` — no re-sign, no asset copy
+- [x] Rollback creates a new release with fresh ids/manifests over the same asset rows
+- [x] Published-release immutability
 
 **Acceptance:** two concurrent publishes to the same 4-tuple leave exactly one deployment row and
 two recorded events.
 
 ## Phase 10 — Dashboard
 
-- [ ] Routes per spec §36 + client-setup + simulator
-- [ ] TanStack Query with a key factory; upload progress via XHR; import polling stepper
+- [x] Routes per spec §36 + client-setup + simulator
+- [x] TanStack Query with a key factory; upload progress via XHR; import polling stepper
 
 **Acceptance:** full browser loop — create app → upload → publish → promote → rollback — with no
 hard refresh.
 
 ## Phase 11 — Hardening, Docker, docs
 
-- [ ] Security headers, body limits, error taxonomy, asset GC, session sweep
-- [ ] Single-container Dockerfile; migrations on entrypoint; SPA served by Bun
-- [ ] Docs per spec §57
+- [x] Security headers, body limits, error taxonomy, asset GC, session sweep
+- [x] Single-container Dockerfile; migrations on entrypoint; SPA served by Bun
+- [x] Docs per spec §57
 
 **Acceptance:** `docker build` + `docker run` serves both the API and the dashboard, with
 migrations applied on start.

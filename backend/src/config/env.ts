@@ -48,6 +48,9 @@ const schema = z
     MAX_ARCHIVE_ENTRIES: bytes(20_000),
     MAX_COMPRESSION_RATIO: bytes(200),
 
+    /** Absolute path to the built dashboard. Unset means API-only. */
+    DASHBOARD_DIST: z.string().optional(),
+
     LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
     TRUST_PROXY: z
       .string()

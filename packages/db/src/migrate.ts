@@ -17,8 +17,7 @@ export async function runMigrations(config: DbConfig): Promise<void> {
   const options = { migrationsFolder: MIGRATIONS_FOLDER };
 
   if (isFileUrl(config.url)) {
-    // biome-ignore lint/suspicious/noExplicitAny: the two migrators are typed
-    // against their own driver-specific database types, which do not unify.
+    // biome-ignore lint/suspicious/noExplicitAny: the two migrators are typed against driver-specific database types that do not unify.
     migrateBunSqlite(db as any, options);
   } else {
     // biome-ignore lint/suspicious/noExplicitAny: see above.
