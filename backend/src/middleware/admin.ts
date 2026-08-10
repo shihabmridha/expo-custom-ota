@@ -30,16 +30,51 @@ export const requireAdmin: MiddlewareHandler<AppEnv> = async (c, next) => {
  * session cookie is `SameSite=Lax`, which already blocks cross-site attachment
  * on non-GET. Recorded in docs/decisions.md (D8) so it is not "fixed" later.
  */
-export function originCheck(allowedOrigins: string[]): MiddlewareHandler<AppEnv> {
-  const allowed = new Set(allowedOrigins);
+export interface OriginCheckOptions {
+  /** Exact origins that are always allowed. */
+  allowed: string[];
+  /**
+   * Development only: also accept any port on the same hosts, and loopback.
+   *
+   * The Vite dev server runs on a different port from the API, and when it is
+   * bound to a LAN address so another machine can reach it — an emulator host,
+   * for instance — its origin is `http://<lan-ip>:5173`, which no fixed list
+   * would contain. Production stays strict: exact match only.
+   */
+  devLoose?: boolean;
+}
 
+export function isOriginAllowed(origin: string, options: OriginCheckOptions): boolean {
+  if (options.allowed.includes(origin)) return true;
+  if (!options.devLoose) return false;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(origin);
+  } catch {
+    return false;
+  }
+
+  if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') return true;
+
+  // Same host as something already allowed, different port.
+  return options.allowed.some((candidate) => {
+    try {
+      return new URL(candidate).hostname === parsed.hostname;
+    } catch {
+      return false;
+    }
+  });
+}
+
+export function originCheck(options: OriginCheckOptions): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
     if (c.req.method === 'GET' || c.req.method === 'HEAD') return next();
 
     const origin = c.req.header('origin');
     // Non-browser clients (curl, the SDK) send no Origin; the session cookie is
     // the credential there and CSRF does not apply.
-    if (origin && !allowed.has(origin)) {
+    if (origin && !isOriginAllowed(origin, options)) {
       c.var.logger.warn('request_failed', { reason: 'origin_rejected', origin });
       return c.json({ code: 'FORBIDDEN', message: 'Origin not allowed' }, 403);
     }

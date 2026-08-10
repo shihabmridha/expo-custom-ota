@@ -36,10 +36,7 @@ export function createApp(deps: AppDependencies) {
   const logger = deps.logger ?? createLogger(deps.env.LOG_LEVEL);
   const app = new Hono<AppEnv>();
 
-  const allowedOrigins = [
-    deps.env.OTA_PUBLIC_URL,
-    ...(deps.env.isProduction ? [] : ['http://localhost:5173', 'http://localhost:3000']),
-  ];
+  const allowedOrigins = [deps.env.OTA_PUBLIC_URL];
 
   app.use('*', async (c, next) => {
     const requestId = crypto.randomUUID();
@@ -108,7 +105,10 @@ export function createApp(deps: AppDependencies) {
 
   // Admin surface. `/auth` is mounted before the session guard so login and the
   // session probe are reachable while signed out.
-  app.use('/api/admin/*', originCheck(allowedOrigins));
+  app.use(
+    '/api/admin/*',
+    originCheck({ allowed: allowedOrigins, devLoose: !deps.env.isProduction }),
+  );
   app.route('/api/admin/auth', createAuthRoutes());
 
   app.use('/api/admin/*', requireAdmin);

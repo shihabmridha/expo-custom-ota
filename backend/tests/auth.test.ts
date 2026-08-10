@@ -3,6 +3,7 @@ import { buildPath, contracts } from '@oat/contracts';
 import type { OatDatabase } from '@oat/db';
 import * as schema from '@oat/db/schema/index';
 import { eq } from 'drizzle-orm';
+import { isOriginAllowed } from '../src/middleware/admin.ts';
 import { createAdmin } from '../src/services/auth.ts';
 import { createMigratedDb, createTestApp, MemoryStorage } from './helpers.ts';
 
@@ -285,5 +286,34 @@ describe('application lifecycle over HTTP', () => {
     // The snippet uses the header the real client sends.
     expect(config.appJsonSnippet).toContain('expo-channel-name');
     expect(config.appJsonSnippet).toContain('rsa-v1_5-sha256');
+  });
+});
+
+describe('origin allowlist', () => {
+  const production = { allowed: ['https://ota.acadion.xyz'], devLoose: false };
+  const development = { allowed: ['http://192.168.0.53:3000'], devLoose: true };
+
+  test('production accepts only the exact origin', () => {
+    expect(isOriginAllowed('https://ota.acadion.xyz', production)).toBe(true);
+    expect(isOriginAllowed('https://ota.acadion.xyz:8443', production)).toBe(false);
+    expect(isOriginAllowed('https://evil.example.com', production)).toBe(false);
+    // A hostname that merely contains the allowed one must not pass.
+    expect(isOriginAllowed('https://ota.acadion.xyz.evil.com', production)).toBe(false);
+  });
+
+  test('development accepts the Vite port on the same LAN host', () => {
+    // The dashboard is served from :5173 while the API answers on :3000.
+    expect(isOriginAllowed('http://192.168.0.53:5173', development)).toBe(true);
+    expect(isOriginAllowed('http://localhost:5173', development)).toBe(true);
+    expect(isOriginAllowed('http://127.0.0.1:5173', development)).toBe(true);
+  });
+
+  test('development still rejects a different host', () => {
+    expect(isOriginAllowed('http://192.168.0.99:5173', development)).toBe(false);
+    expect(isOriginAllowed('https://evil.example.com', development)).toBe(false);
+  });
+
+  test('rejects a malformed origin', () => {
+    expect(isOriginAllowed('not a url', development)).toBe(false);
   });
 });

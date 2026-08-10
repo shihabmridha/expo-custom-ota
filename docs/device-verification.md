@@ -7,6 +7,62 @@ building the APK.
 
 ---
 
+## Two passes
+
+Doing this against a LAN server first is much cheaper: every server-side fix is a restart rather
+than a redeploy, and you will find the config mistakes there. Then repeat against the VPS, which
+is the pass that counts.
+
+An **emulator is a valid target** — it runs the same `expo-updates` client, so it exercises the
+protocol, signing and rollback paths identically. A physical device additionally covers real
+network conditions and is worth doing eventually, but nothing in this checklist requires one.
+
+### Pass 1 — LAN
+
+Server on one machine, Android SDK and emulator on another, same network.
+
+```
+  laptop 192.168.0.53                emulator machine
+  ├── OAT API      :3000  ◀──────────  emulator (LAN, plain HTTP)
+  └── dashboard    :5173  ◀──────────  browser (upload releases)
+```
+
+Three things are already handled for this:
+
+- `Bun.serve` binds `0.0.0.0`, and the Vite dev server sets `host: true`, so both are reachable
+  from the LAN.
+- Android 9+ blocks cleartext HTTP by default, and the failure is silent — no request leaves the
+  device, so the server logs stay empty. `app.config.ts` enables the exemption automatically
+  **when and only when** `OAT_UPDATE_URL` starts with `http://`, so it cannot leak into an HTTPS
+  build.
+- The dashboard runs on `:5173` while the API answers on `:3000`, so a LAN upload's `Origin`
+  matches neither. In development the origin check accepts any port on the same host; production
+  stays exact-match.
+
+Set the server up:
+
+```bash
+# .env
+OTA_PUBLIC_URL=http://192.168.0.53:3000    # the LAN IP, not localhost
+
+bun run e2e:setup     # creates the application, writes certs/certificate.pem, prints the URL
+bun run dev           # API :3000 + dashboard :5173, both on the LAN
+```
+
+`e2e:setup` is idempotent and reuses an existing signing key, because regenerating one would
+invalidate the certificate already embedded in an installed build.
+
+If the emulator cannot reach the server, check in this order: NordVPN or another VPN capturing
+the route, Windows Firewall (`bun.exe` inbound must be allowed — it already is here), and that
+you used the LAN IP rather than `localhost`. Note `10.0.2.2` is the emulator's alias for *its own
+host's* loopback; for a server on a different machine, use that machine's LAN IP directly.
+
+### Pass 2 — VPS
+
+Re-run `bun run e2e:setup` with `OTA_PUBLIC_URL=https://ota.acadion.xyz`, rebuild the app with
+the new URL, and work the checklist again. No cleartext exemption, and the certificate differs
+because it is a different server — so this is a genuine rebuild, not a config tweak.
+
 ## The ordering that matters
 
 **The code signing certificate is embedded in the binary.** So the certificate must exist

@@ -22,6 +22,9 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Bound to all interfaces so another machine on the LAN — an emulator host,
+    // for instance — can reach the dashboard during device verification.
+    host: true,
     fs: { allow: [r('..')] },
     // Same-origin in dev: no CORS config, and cookie behaviour matches production.
     proxy: { '/api': 'http://localhost:3000' },
