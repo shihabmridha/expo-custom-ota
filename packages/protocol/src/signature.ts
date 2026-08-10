@@ -130,9 +130,28 @@ export function certificateInfo(certificatePem: string): CertificateInfo {
   };
 }
 
+/** RFC 5280 id-kp-codeSigning. */
+const CODE_SIGNING_EKU_OID = '1.3.6.1.5.5.7.3.3';
+
 /**
  * Validate that a certificate is usable for Expo code signing before we let an
  * administrator save it. Returns human-readable problems, empty when fine.
+ *
+ * The client validates the certificate itself before verifying anything with
+ * it, and rejects the update outright if it fails:
+ *
+ *   "First certificate in chain is not a code signing certificate. Must have
+ *    X509v3 Key Usage: Digital Signature and X509v3 Extended Key Usage: Code
+ *    Signing"
+ *
+ * So a certificate that lacks those extensions — an Android app signing
+ * certificate from `keytool`, for instance, which has neither — would be
+ * accepted here and then fail on every device. Catching it at save time is the
+ * difference between an error message and a debugging session.
+ *
+ * Note: Node's `X509Certificate` exposes extended key usage but not the
+ * individual keyUsage bits, so the `digitalSignature` bit is not checked here.
+ * Certificates OAT generates set both, via Expo's own generator.
  */
 export function validateCodeSigningCertificate(certificatePem: string, now = new Date()): string[] {
   const problems: string[] = [];
@@ -152,10 +171,22 @@ export function validateCodeSigningCertificate(certificatePem: string, now = new
   const keyDetails = cert.publicKey.asymmetricKeyDetails;
   if (cert.publicKey.asymmetricKeyType !== 'rsa') {
     problems.push(
-      `Key type must be RSA (the client only supports ${CODE_SIGNING_ALGORITHM}); got ${cert.publicKey.asymmetricKeyType}.`,
+      `Key type must be RSA (the client only supports ${CODE_SIGNING_ALGORITHM}); got ` +
+        `${cert.publicKey.asymmetricKeyType}. An EC key cannot be used for Expo code signing.`,
     );
   } else if ((keyDetails?.modulusLength ?? 0) < 2048) {
     problems.push(`RSA key must be at least 2048 bits; got ${keyDetails?.modulusLength}.`);
+  }
+
+  // `X509Certificate.keyUsage` holds the extended key usage OIDs.
+  const extendedKeyUsage = cert.keyUsage ?? [];
+  if (!extendedKeyUsage.includes(CODE_SIGNING_EKU_OID)) {
+    problems.push(
+      'Certificate is missing the Code Signing extended key usage ' +
+        `(${CODE_SIGNING_EKU_OID}), which expo-updates requires — it rejects the update with ` +
+        '"not a code signing certificate". Android app signing certificates do not have this ' +
+        'extension and cannot be used here; generate a separate code signing key instead.',
+    );
   }
 
   return problems;

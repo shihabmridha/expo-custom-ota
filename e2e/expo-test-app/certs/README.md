@@ -12,6 +12,14 @@ server.
 `.gitignore` ignores `*.pem` everywhere except this directory, precisely so this one is not
 dropped by accident.
 
+## Not your app signing key
+
+This is **not** the keystore you build the APK with. They are different keys: the keystore signs
+the package and is verified at install; this certificate signs update manifests and is verified at
+runtime. A keytool certificate has no `extKeyUsage: codeSigning` and the client rejects it.
+
+Keep using your existing keystore for the build.
+
 ## Order matters
 
 The certificate must exist **before** you build the APK, because it is baked into the binary.

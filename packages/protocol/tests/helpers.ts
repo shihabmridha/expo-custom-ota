@@ -7,6 +7,14 @@ export const TEST_KEY_PEM = await Bun.file(join(SIGNING_DIR, 'test-key.pem')).te
 export const TEST_CERT_PEM = await Bun.file(join(SIGNING_DIR, 'test-cert.pem')).text();
 export const OTHER_CERT_PEM = await Bun.file(join(SIGNING_DIR, 'other-cert.pem')).text();
 
+/** Self-signed RSA with no keyUsage/extKeyUsage — what `keytool` produces. */
+export const ANDROID_APP_SIGNING_CERT_PEM = await Bun.file(
+  join(SIGNING_DIR, 'android-app-signing-cert.pem'),
+).text();
+
+/** EC key: unusable, since expo-updates only implements rsa-v1_5-sha256. */
+export const EC_CERT_PEM = await Bun.file(join(SIGNING_DIR, 'ec-cert.pem')).text();
+
 export const TEST_KEY_ID = 'main';
 
 /**

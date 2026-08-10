@@ -26,6 +26,16 @@ the correct value.
 
 This one is unforgiving: the client rejects the update outright rather than falling back.
 
+## "First certificate in chain is not a code signing certificate"
+
+The certificate embedded in the app is not usable for Expo code signing. Almost always this means
+an **app signing certificate** was used — your Android keystore or iOS distribution certificate.
+Those are a different key with a different job; `keytool` certificates carry no
+`extKeyUsage: codeSigning`, which the client requires.
+
+Use the certificate from the application's **Signing** tab instead, and keep using your keystore
+to build the binary. See [code-signing.md](code-signing.md).
+
 ## The signature does not verify, and the keyid is right
 
 The signing key was rotated after the release was published. Rotation does not re-sign existing

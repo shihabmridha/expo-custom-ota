@@ -4,6 +4,46 @@ Signing is what makes a self-hosted update server safe. Without it, anyone who c
 update URL — a compromised host, a hostile network, a misconfigured proxy — can ship arbitrary
 JavaScript into your app.
 
+## This is not your app signing key
+
+The first thing most people ask. Your Android keystore (or iOS distribution certificate) and the
+OTA code signing key are **different keys with different jobs**, and they are not
+interchangeable.
+
+| | App signing key | OTA code signing key |
+|---|---|---|
+| Signs | the APK/AAB (or IPA) | the update **manifest** |
+| Verified by | Android / Play Store, at install | `expo-updates`, at runtime |
+| Lives | your keystore, or Play App Signing | the OAT server, under `SIGNING_KEYS_DIRECTORY` |
+| Format | JKS/PKCS12 keystore | PEM private key + X.509 certificate |
+| Algorithm | RSA or EC | **RSA only** (`rsa-v1_5-sha256`) |
+| Rotating it | new app identity; users reinstall | existing releases must be republished |
+
+**Reusing the app signing key would not work even if you wanted to**, for two concrete reasons:
+
+- `expo-updates` validates the certificate before it verifies anything with it, and rejects
+  anything without the right extensions:
+
+  > First certificate in chain is not a code signing certificate. Must have X509v3 Key Usage:
+  > Digital Signature and X509v3 Extended Key Usage: Code Signing
+
+  A certificate produced by `keytool` has neither extension — it carries only Subject Key
+  Identifier, Authority Key Identifier and Basic Constraints.
+
+- If your keystore uses an EC key, it cannot be used at all. `expo-updates` implements only
+  RSA PKCS#1 v1.5 with SHA-256.
+
+And you would not want to: it would mean copying the private key that signs your app packages
+onto the update server. A compromise there currently lets an attacker serve JavaScript to
+devices that already trust you; with the app signing key present it would also let them sign
+installable packages. Keeping them separate contains the blast radius.
+
+OAT rejects both cases when a certificate is saved, rather than letting them fail on device.
+
+**What to do instead:** nothing extra. OAT generates a dedicated code signing key when you
+create an application. Keep using your existing keystore to build the APK, and embed OAT's
+certificate for updates. The two never meet.
+
 ## How it works
 
 Signing the manifest transitively covers everything, because the manifest contains the SHA-256

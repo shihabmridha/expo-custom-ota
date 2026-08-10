@@ -6,7 +6,14 @@ import {
   validateCodeSigningCertificate,
   verifySignature,
 } from '../src/signature.ts';
-import { OTHER_CERT_PEM, TEST_CERT_PEM, TEST_KEY_ID, TEST_KEY_PEM } from './helpers.ts';
+import {
+  ANDROID_APP_SIGNING_CERT_PEM,
+  EC_CERT_PEM,
+  OTHER_CERT_PEM,
+  TEST_CERT_PEM,
+  TEST_KEY_ID,
+  TEST_KEY_PEM,
+} from './helpers.ts';
 
 const PAYLOAD = JSON.stringify({ id: 'abc', runtimeVersion: '1.5.0' });
 
@@ -93,5 +100,32 @@ describe('validateCodeSigningCertificate', () => {
     const farFuture = new Date('2099-01-01T00:00:00Z');
     const problems = validateCodeSigningCertificate(TEST_CERT_PEM, farFuture);
     expect(problems.some((p) => p.includes('expired'))).toBe(true);
+  });
+
+  /**
+   * The client validates the certificate before verifying anything with it:
+   *
+   *   "First certificate in chain is not a code signing certificate. Must have
+   *    X509v3 Key Usage: Digital Signature and X509v3 Extended Key Usage: Code
+   *    Signing"
+   *
+   * Without these checks a certificate that cannot possibly work would be
+   * accepted here and fail on every device instead.
+   */
+  test('rejects an Android app signing certificate', () => {
+    // Shaped like keytool's output: self-signed RSA, but no keyUsage and no
+    // extKeyUsage. People reasonably assume their existing release key works.
+    const problems = validateCodeSigningCertificate(ANDROID_APP_SIGNING_CERT_PEM);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('Code Signing extended key usage');
+    // The message has to say what to do, not just what is wrong.
+    expect(problems[0]).toContain('Android app signing certificates');
+  });
+
+  test('rejects an EC certificate', () => {
+    // Some keystores use EC. expo-updates only implements rsa-v1_5-sha256, so
+    // an EC key cannot verify at all regardless of extensions.
+    const problems = validateCodeSigningCertificate(EC_CERT_PEM);
+    expect(problems.some((p) => p.includes('must be RSA'))).toBe(true);
   });
 });
