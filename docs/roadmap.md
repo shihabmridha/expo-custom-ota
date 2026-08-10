@@ -1,6 +1,6 @@
 # OAT roadmap
 
-**CURRENT PHASE: 12 — Real-device Android/iOS verification**
+**CURRENT PHASE: 12 — VPS pass + iOS**
 
 Phases 0–11 are complete: protocol, database, contracts, backend, importer, publishing, auth,
 dashboard, Docker and docs. Every flow is verified end-to-end over real HTTP — upload, publish,
@@ -146,10 +146,9 @@ migrations applied on start.
 
 Full procedure: [device-verification.md](device-verification.md). Test app: `e2e/expo-test-app`.
 
-- [ ] Android: A → B → C → rollback-to-B → runtime-mismatch isolation
-- [ ] iOS: same
-- [ ] Signature negative test (wrong key ⇒ client refuses the update)
-- [ ] Offline / server-down tolerance (app still launches from cache)
+- [x] **Android over LAN: all 9 steps pass** — see [device-verification-results.md](device-verification-results.md)
+- [ ] Android against the VPS (`https://ota.acadion.xyz`) — needs a deploy and a rebuild
+- [ ] iOS: same checklist, independently
 
 **Acceptance:** signed OTA updates land on both platforms. V1 is not production-ready until this
 passes (spec §61).

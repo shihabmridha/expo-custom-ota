@@ -70,7 +70,18 @@ export const applicationSigningKeys = sqliteTable(
     ...timestamps(),
   },
   (t) => [
-    uniqueIndex('signing_keys_app_keyid_unique').on(t.applicationId, t.keyId),
+    /**
+     * Deliberately NOT unique on (application_id, key_id).
+     *
+     * Rotation keeps the same `key_id` — it has to, because the client matches
+     * it against the `codeSigningMetadata.keyid` baked into an already-shipped
+     * binary. Requiring uniqueness across all statuses would make rotating
+     * impossible: the retired key still occupies (app, "main").
+     *
+     * The invariant that actually matters — one *active* key per application —
+     * is enforced by the partial index below. Retired keys are history.
+     */
+    index('signing_keys_app_keyid_idx').on(t.applicationId, t.keyId),
     /**
      * Partial unique index: at most one active key per application. SQLite
      * supports these, so the invariant is enforced by the database rather than

@@ -22,7 +22,8 @@
     "db:studio": "bunx drizzle-kit studio --config=packages/db/drizzle.config.ts",
     "admin:create": "bun run backend/scripts/create-admin.ts",
     "gc:assets": "bun run backend/scripts/gc-assets.ts",
-    "e2e:setup": "bun run backend/scripts/e2e-setup.ts"
+    "e2e:setup": "bun run backend/scripts/e2e-setup.ts",
+    "e2e:publish": "bun run backend/scripts/e2e-publish.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.14",

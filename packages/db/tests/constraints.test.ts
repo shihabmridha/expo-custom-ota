@@ -354,3 +354,49 @@ describe('signing keys', () => {
     expect(() => insertKey('k2', 'a2', 'main', 'active')).not.toThrow();
   });
 });
+
+/**
+ * Signing key rotation.
+ *
+ * Rotation keeps the same `key_id`, because the client matches it against the
+ * `codeSigningMetadata.keyid` baked into an already-shipped binary. An earlier
+ * `UNIQUE(application_id, key_id)` made that impossible — the retired key still
+ * occupied (app, "main") — and rotation failed with an opaque constraint error.
+ */
+describe('signing key rotation', () => {
+  beforeEach(() => insertApp('a1', 'acadion', 'ota_1'));
+
+  function insertKey(id: string, applicationId: string, keyId: string, status: string) {
+    db.run(
+      `INSERT INTO application_signing_keys
+         (id, application_id, key_id, certificate_pem, certificate_fingerprint,
+          certificate_not_after, private_key_ref, status, created_at, updated_at)
+       VALUES (?, ?, ?, 'pem', 'fp', ?, 'ref', ?, ?, ?)`,
+      [id, applicationId, keyId, NOW, status, NOW, NOW],
+    );
+  }
+
+  test('a retired key does not block a new one with the same keyid', () => {
+    insertKey('k1', 'a1', 'main', 'active');
+    db.run("UPDATE application_signing_keys SET status = 'retired' WHERE id = 'k1'");
+
+    expect(() => insertKey('k2', 'a1', 'main', 'active')).not.toThrow();
+
+    const active = db
+      .query("SELECT id FROM application_signing_keys WHERE status = 'active'")
+      .all() as { id: string }[];
+    expect(active).toHaveLength(1);
+    expect(active[0]?.id).toBe('k2');
+  });
+
+  test('two active keys are still refused, whatever their keyids', () => {
+    insertKey('k1', 'a1', 'main', 'active');
+    expect(() => insertKey('k2', 'a1', 'other', 'active')).toThrow(/UNIQUE/i);
+  });
+
+  test('several retired keys may share a keyid across rotations', () => {
+    insertKey('k1', 'a1', 'main', 'retired');
+    insertKey('k2', 'a1', 'main', 'retired');
+    expect(() => insertKey('k3', 'a1', 'main', 'active')).not.toThrow();
+  });
+});

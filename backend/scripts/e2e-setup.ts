@@ -60,11 +60,22 @@ const activeKey = await db
 let certificatePem: string;
 let keyId: string;
 
-if (activeKey[0] && activeKey[0].status === 'active') {
+const forceRotate = process.argv.includes('--rotate');
+
+if (activeKey[0] && activeKey[0].status === 'active' && !forceRotate) {
   certificatePem = activeKey[0].certificatePem;
   keyId = activeKey[0].keyId;
   console.log(`Reusing signing key "${keyId}" — regenerating would break installed builds.`);
 } else {
+  if (forceRotate) {
+    console.warn(
+      [
+        '⚠  Rotating the signing key. Every release already published was signed with the',
+        '   old key and will be REFUSED by any installed build, whose embedded certificate',
+        '   no longer matches. Those builds need rebuilding.',
+      ].join('\n'),
+    );
+  }
   const generated = await generateSigningKey(db, env.signingKeysDirAbsolute, {
     applicationId: application.id,
     applicationSlug: SLUG,

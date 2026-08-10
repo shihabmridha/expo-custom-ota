@@ -56,6 +56,11 @@ assetRoutes.get('/sha256/:shard/:hash', async (c) => {
     return c.text('Not found', 404);
   }
 
+  // Debug level: one line per asset, so a device pulling 70 files does not bury
+  // the update requests. Invaluable during device verification, where "did the
+  // bundle actually download" is otherwise unanswerable from the server side.
+  logger.debug('asset_served', { sha256: hash, bytes: asset.sizeBytes });
+
   return new Response(body, {
     headers: {
       'content-type': asset.contentType,

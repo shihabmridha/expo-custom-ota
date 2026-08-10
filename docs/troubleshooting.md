@@ -36,6 +36,30 @@ Those are a different key with a different job; `keytool` certificates carry no
 Use the certificate from the application's **Signing** tab instead, and keep using your keystore
 to build the binary. See [code-signing.md](code-signing.md).
 
+## A rollBackToEmbedded is deployed, but `checkForUpdateAsync` says `isAvailable: false`
+
+That is the documented shape, not a failure. A rollback has no manifest to offer, so
+`checkForUpdateAsync()` returns:
+
+```js
+{ isAvailable: false, isRollBackToEmbedded: true }
+```
+
+Custom update UI that branches only on `isAvailable` therefore ignores the kill-switch entirely —
+the one mechanism you reach for when something is on fire. Handle both:
+
+```js
+const result = await Updates.checkForUpdateAsync();
+if (result.isAvailable || result.isRollBackToEmbedded) {
+  await Updates.fetchUpdateAsync();
+  await Updates.reloadAsync();
+}
+```
+
+The **automatic** launch flow handles directives natively and needs no application code, so a
+force-stop and relaunch applies the rollback regardless. Confirm from the server side by looking
+for `roll_back_to_embedded_served`.
+
 ## The signature does not verify, and the keyid is right
 
 The signing key was rotated after the release was published. Rotation does not re-sign existing

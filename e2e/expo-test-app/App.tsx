@@ -33,10 +33,24 @@ export default function App() {
       append(`available: ${result.isAvailable}`);
       if ('reason' in result && result.reason) append(`reason: ${String(result.reason)}`);
 
-      if (result.isAvailable) {
+      /**
+       * A `rollBackToEmbedded` directive comes back as `isAvailable: false` with
+       * `isRollBackToEmbedded: true` — there is no manifest to offer, so
+       * "available" is false even though there is something to do. Checking
+       * only `isAvailable` silently ignores the kill-switch.
+       */
+      const isRollBack = 'isRollBackToEmbedded' in result && result.isRollBackToEmbedded;
+      if (isRollBack) append('rollBackToEmbedded directive received');
+
+      if (result.isAvailable || isRollBack) {
         const fetched = await Updates.fetchUpdateAsync();
-        append(`fetched: ${fetched.isNew}`);
-        if (fetched.isNew) {
+        append(`fetched: isNew=${fetched.isNew}`);
+        if ('isRollBackToEmbedded' in fetched) {
+          append(`fetched: isRollBackToEmbedded=${fetched.isRollBackToEmbedded}`);
+        }
+        // A rollback has nothing "new" to launch, but still needs a reload to
+        // drop back to the embedded bundle.
+        if (fetched.isNew || isRollBack) {
           append('reloading…');
           await Updates.reloadAsync();
         }
