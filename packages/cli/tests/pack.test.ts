@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { unzipSync } from 'fflate';
@@ -127,5 +127,106 @@ describe('packUpdate', () => {
       console.warn = originalWarn;
     }
     expect(warnings).toHaveLength(0);
+  });
+});
+
+describe('packUpdate --platform and dist/ cleanup (issue 2)', () => {
+  /** A project directory independent of the shared fixtures, safe for each test to mutate. */
+  function makeExportProject(): string {
+    const dir = join(tmpDir, 'export-project');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'export-project' }));
+    return dir;
+  }
+
+  /** Writes just enough of a dist/ tree to look like a real `expo export` for one platform. */
+  function fakeExport(dir: string, platform: string): void {
+    const jsDir = join(dir, 'dist', '_expo', 'static', 'js', platform);
+    mkdirSync(jsDir, { recursive: true });
+    writeFileSync(join(jsDir, 'index-abc123.hbc'), 'fake bundle');
+    writeFileSync(
+      join(dir, 'dist', 'metadata.json'),
+      JSON.stringify({ fileMetadata: { [platform]: {} } }),
+    );
+  }
+
+  test('defaults to --platform "all" when none is given', async () => {
+    const projectDir = makeExportProject();
+    const seenPlatforms: string[] = [];
+
+    await packUpdate({
+      projectDir,
+      outPath,
+      quiet: true,
+      loadExpoConfig: () => loadConfig(stringRuntimeVersion),
+      runExpoExport: (dir, platform) => {
+        seenPlatforms.push(platform);
+        fakeExport(dir, 'android');
+      },
+    });
+
+    expect(seenPlatforms).toEqual(['all']);
+  });
+
+  test('forwards --platform through to the export step', async () => {
+    const projectDir = makeExportProject();
+    const seenPlatforms: string[] = [];
+
+    const result = await packUpdate({
+      projectDir,
+      outPath,
+      quiet: true,
+      platform: 'android',
+      loadExpoConfig: () => loadConfig(stringRuntimeVersion),
+      runExpoExport: (dir, platform) => {
+        seenPlatforms.push(platform);
+        fakeExport(dir, 'android');
+      },
+    });
+
+    expect(seenPlatforms).toEqual(['android']);
+    expect(result.platforms).toEqual(['android']);
+  });
+
+  test('clears a stale dist/ before running the export, so a platform switch cannot leak the previous bundle', async () => {
+    const projectDir = makeExportProject();
+    // Simulate what a prior `--platform all` run left behind.
+    const staleFile = join(projectDir, 'dist', '_expo', 'static', 'js', 'ios', 'index-stale.hbc');
+    mkdirSync(join(projectDir, 'dist', '_expo', 'static', 'js', 'ios'), { recursive: true });
+    writeFileSync(staleFile, 'stale ios bundle');
+
+    let staleFilePresentWhenExportRan: boolean | undefined;
+
+    await packUpdate({
+      projectDir,
+      outPath,
+      quiet: true,
+      platform: 'android',
+      loadExpoConfig: () => loadConfig(stringRuntimeVersion),
+      runExpoExport: (dir) => {
+        staleFilePresentWhenExportRan = existsSync(staleFile);
+        fakeExport(dir, 'android');
+      },
+    });
+
+    expect(staleFilePresentWhenExportRan).toBe(false);
+    expect(existsSync(staleFile)).toBe(false);
+  });
+
+  test('does not touch dist/ when --skip-export is given — the caller owns dist/', async () => {
+    const projectDir = join(tmpDir, 'skip-export-project');
+    cpSync(PROJECT_DIR, projectDir, { recursive: true });
+    const staleFile = join(projectDir, 'dist', 'stale-marker.txt');
+    writeFileSync(staleFile, 'left behind by the caller, on purpose');
+
+    await packUpdate({
+      projectDir,
+      outPath,
+      skipExport: true,
+      quiet: true,
+      loadExpoConfig: () => loadConfig(stringRuntimeVersion),
+    });
+
+    expect(existsSync(staleFile)).toBe(true);
   });
 });

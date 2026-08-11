@@ -23,6 +23,12 @@ export async function publishUpdate(options: PublishOptions = {}): Promise<void>
   if (!appId) {
     throw new Error('Application ID is required. Pass --app <id> or set OTA_APP_ID.');
   }
+  if (appId.startsWith('ota_')) {
+    throw new Error(
+      `"${appId}" looks like an update key (the value in your updates URL), not an application id. ` +
+        `The application id is a UUID — find it in the dashboard or via GET /api/admin/applications.`,
+    );
+  }
   if (!email || !password) {
     throw new Error(
       'Credentials are required for publishing. Set OTA_EMAIL and OTA_PASSWORD or pass --email and --password.',

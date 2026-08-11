@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join, relative, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { zipSync } from 'fflate';
 
 /**
@@ -26,12 +26,23 @@ export interface PackOptions {
   skipExport?: boolean;
   quiet?: boolean;
   /**
+   * Platforms to pass to `expo export --platform`. Defaults to `'all'`.
+   */
+  platform?: string;
+  /**
    * Overrides how the project's public Expo config is loaded, in place of the
-   * default `@expo/config` dynamic import. Exists for tests, which run against
+   * default `@expo/config` require. Exists for tests, which run against
    * a static fixture with no `@expo/config` installed (or `node_modules` at
    * all) — real callers never need to pass this.
    */
   loadExpoConfig?: (projectDir: string) => Promise<ExpoPublicConfig>;
+  /**
+   * Overrides how `expo export` itself is invoked, in place of the default
+   * `npx expo export` subprocess. Exists for tests — which cannot assume a
+   * real Expo project or a network-reachable `npx` — real callers never need
+   * to pass this.
+   */
+  runExpoExport?: (projectDir: string, platform: string, quiet: boolean) => void;
 }
 
 export interface PackResult {
@@ -42,11 +53,13 @@ export interface PackResult {
   archive: Uint8Array;
 }
 
-/** The real `@expo/config` loader, resolved from the target project's own `node_modules`. */
-async function defaultLoadExpoConfig(projectDir: string): Promise<ExpoPublicConfig> {
-  const configPath = join(projectDir, 'node_modules', '@expo', 'config', 'build', 'Config.js');
-  const configUrl = pathToFileURL(configPath).href;
-  const { getConfig } = (await import(configUrl)) as {
+/** The real `@expo/config` loader, resolved the way the project itself would resolve it. */
+export async function defaultLoadExpoConfig(projectDir: string): Promise<ExpoPublicConfig> {
+  // Anchored at the project's package.json so resolution walks UP the node_modules
+  // chain. Hoisted workspaces keep @expo/config at the repo root, and the app
+  // directory may have no node_modules of its own.
+  const requireFromProject = createRequire(join(projectDir, 'package.json'));
+  const { getConfig } = requireFromProject('@expo/config') as {
     getConfig: (
       dir: string,
       opts: { skipSDKVersionRequirement: boolean; isPublicConfig: boolean },
@@ -55,12 +68,26 @@ async function defaultLoadExpoConfig(projectDir: string): Promise<ExpoPublicConf
   return getConfig(projectDir, { skipSDKVersionRequirement: true, isPublicConfig: true });
 }
 
+/** The real `expo export` invocation, run as the target project's own `npx` would run it. */
+function defaultRunExpoExport(projectDir: string, platform: string, quiet: boolean): void {
+  const proc = spawnSync('npx', ['expo', 'export', '--platform', platform], {
+    cwd: projectDir,
+    stdio: quiet ? 'ignore' : 'inherit',
+    shell: process.platform === 'win32',
+  });
+  if (proc.status !== 0) {
+    throw new Error(`expo export failed with exit code ${proc.status ?? 1}`);
+  }
+}
+
 export async function packUpdate(options: PackOptions = {}): Promise<PackResult> {
   const projectDir = resolve(options.projectDir ?? process.cwd());
   const outPath = resolve(options.outPath ?? join(projectDir, 'update.zip'));
   const distDir = join(projectDir, 'dist');
   const quiet = options.quiet ?? false;
+  const platform = options.platform ?? 'all';
   const loadExpoConfig = options.loadExpoConfig ?? defaultLoadExpoConfig;
+  const runExpoExport = options.runExpoExport ?? defaultRunExpoExport;
 
   if (!existsSync(join(projectDir, 'package.json'))) {
     throw new Error(`No package.json found in ${projectDir}. Pass --project <expo-project-dir>.`);
@@ -68,15 +95,14 @@ export async function packUpdate(options: PackOptions = {}): Promise<PackResult>
 
   // --- 1. Export --------------------------------------------------------------
   if (!options.skipExport) {
-    if (!quiet) console.log('Running `expo export --platform all`…');
-    const proc = spawnSync('npx', ['expo', 'export', '--platform', 'all'], {
-      cwd: projectDir,
-      stdio: quiet ? 'ignore' : 'inherit',
-      shell: process.platform === 'win32',
-    });
-    if (proc.status !== 0) {
-      throw new Error(`expo export failed with exit code ${proc.status ?? 1}`);
-    }
+    if (!quiet) console.log(`Running \`expo export --platform ${platform}\`…`);
+    // `expo export` does not clear its own output — without this, switching from
+    // `--platform all` to `--platform android` would leave the previous iOS bundle
+    // sitting in dist/, and the archive below would advertise a platform it no
+    // longer has a current bundle for. Only do this when we own the export; with
+    // --skip-export the caller owns dist/.
+    rmSync(distDir, { recursive: true, force: true });
+    runExpoExport(projectDir, platform, quiet);
   } else if (!existsSync(distDir)) {
     throw new Error(`--skip-export was given but ${distDir} does not exist.`);
   }

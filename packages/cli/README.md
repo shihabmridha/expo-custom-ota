@@ -82,6 +82,7 @@ Options:
 * `-p, --project <dir>`: Expo project directory (default `.`)
 * `-o, --out <path>`: Output ZIP path (default `<project>/update.zip`)
 * `--skip-export`: Skip running `expo export` and package an existing `dist/` folder
+* `--platform <list>`: Platforms to export: `all`, `android`, `ios` (default `all`)
 * `-q, --quiet`: Suppress non-error logs
 
 ### 2. Package & Publish directly (`publish`)
@@ -91,7 +92,7 @@ Package and upload directly to your `expo-custom-ota` server:
 ```bash
 npx expo-custom-ota publish \
   --server https://ota.example.com \
-  --app ota_X7jb8C49pQ2 \
+  --app 8030e416-fb8b-4bac-ada6-e76b1b31881a \
   --channel production \
   --email admin@example.com \
   --password secret \
@@ -100,7 +101,7 @@ npx expo-custom-ota publish \
 
 Or set environment variables in CI/CD:
 * `OTA_SERVER_URL`
-* `OTA_APP_ID`
+* `OTA_APP_ID` — the application UUID (not the `ota_…` update key in your updates URL)
 * `OTA_CHANNEL`
 * `OTA_EMAIL`
 * `OTA_PASSWORD`

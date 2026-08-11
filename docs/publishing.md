@@ -39,6 +39,10 @@ npx expo-custom-ota pack
 This runs `expo export --platform all`, generates `expoConfig.json` (which `expo export` does
 not produce), and writes `update.zip`.
 
+Pass `--platform android` or `--platform ios` to ship a single platform. `pack` clears `dist/`
+before exporting, so switching platforms cannot leave a stale bundle from the previous run in the
+archive — the one exception is `--skip-export`, where `dist/` belongs to you.
+
 `expoConfig.json` matters: it becomes `manifest.extra.expoClient`, which is what populates
 `Constants.expoConfig` on device. An archive without it is rejected rather than accepted with an
 empty config, because the latter fails silently at runtime.
@@ -49,13 +53,17 @@ Either **Applications → your app → Releases → Upload** in the dashboard, o
 
 ```bash
 npx expo-custom-ota publish \
-  --server https://ota.example.com --app <application-id> --channel production \
+  --server https://ota.example.com --app <application-uuid> --channel production \
   --email you@example.com --password '<a long password>'
 ```
 
-`publish` runs `pack` and the upload in one step, then publishes the resulting release to the
-given channel. Either way, the upload returns immediately and the import runs in the background;
-the dashboard screen polls until it finishes, and the CLI waits for it before publishing.
+`--app` takes the application **UUID**, not the `ota_…` update key from your updates URL — see
+[`client-setup.md`](./client-setup.md) for why those are two different values.
+
+`publish` runs `pack` and the upload in one step, so it accepts every `pack` flag as well,
+including `--platform`. It then publishes the resulting release to the given channel. Either way,
+the upload returns immediately and the import runs in the background; the dashboard screen polls
+until it finishes, and the CLI waits for it before publishing.
 
 The importer validates the archive, checks the native identifiers against the application,
 hashes every file, deduplicates against existing assets, uploads only what is new, and builds

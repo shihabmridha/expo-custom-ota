@@ -25,6 +25,11 @@ real URL and keyid.
 }
 ```
 
+> **Two identifiers, and they are not interchangeable.**
+> `ota_…` in the updates URL is the **update key** — public, embedded in the app, what devices
+> send. The **application id** is a UUID, used by every `/api/admin` route and by the CLI's
+> `--app` / `OTA_APP_ID`. The Client setup tab shows both.
+
 Install `expo-updates` if you have not: `bunx expo install expo-updates`.
 
 ## The four things that trip people up

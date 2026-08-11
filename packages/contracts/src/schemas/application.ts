@@ -93,6 +93,7 @@ export const signingKeySchema = z.object({
 
 /** Everything needed to configure `expo-updates` against this application. */
 export const clientConfigSchema = z.object({
+  applicationId: z.string(),
   otaUrl: z.string(),
   updateKey: z.string(),
   defaultChannel: z.string(),

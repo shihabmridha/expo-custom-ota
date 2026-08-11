@@ -269,6 +269,7 @@ export function buildClientConfig(
   };
 
   return {
+    applicationId: app.id,
     otaUrl,
     updateKey: app.updateKey,
     defaultChannel: app.defaultChannel,

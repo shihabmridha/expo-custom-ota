@@ -6,7 +6,7 @@ import pkg from '../package.json' with { type: 'json' };
 import { packUpdate } from './pack.ts';
 import { publishUpdate } from './publish.ts';
 
-const program = new Command();
+export const program = new Command();
 
 program
   .name('expo-custom-ota')
@@ -23,6 +23,7 @@ program
   )
   .option('-o, --out <path>', 'Output archive path (defaults to <project>/update.zip)')
   .option('--skip-export', 'Skip running `expo export` and package existing dist/ directory')
+  .option('--platform <list>', 'Platforms to export: all, android, ios', 'all')
   .option('-q, --quiet', 'Suppress non-error logs')
   .action(async (options) => {
     try {
@@ -30,6 +31,7 @@ program
         projectDir: options.project,
         outPath: options.out,
         skipExport: options.skipExport,
+        platform: options.platform,
         quiet: options.quiet,
       });
     } catch (error) {
@@ -44,6 +46,7 @@ program
   .option('-p, --project <dir>', 'Expo project directory', '.')
   .option('-o, --out <path>', 'Output archive path')
   .option('--skip-export', 'Skip running `expo export`')
+  .option('--platform <list>', 'Platforms to export: all, android, ios', 'all')
   .option('-s, --server <url>', 'Server URL (or set OTA_SERVER_URL)')
   .option('-a, --app <id>', 'Application ID (or set OTA_APP_ID)')
   .option('-c, --channel <name>', 'Channel to publish to (defaults to production)', 'production')
@@ -56,6 +59,7 @@ program
         projectDir: options.project,
         outPath: options.out,
         skipExport: options.skipExport,
+        platform: options.platform,
         serverUrl: options.server,
         appId: options.app,
         channel: options.channel,
@@ -69,4 +73,8 @@ program
     }
   });
 
-program.parse(process.argv);
+// Guarded so tests can import `program` to inspect its command/option definitions
+// without triggering an actual parse of the test runner's own argv.
+if (import.meta.main) {
+  program.parse(process.argv);
+}

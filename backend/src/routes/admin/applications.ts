@@ -36,8 +36,25 @@ async function loadApplication(c: { var: AppEnv['Variables'] }, id: string | und
     .limit(1);
 
   const app = rows[0];
-  if (!app) throw new ApplicationError('NOT_FOUND', 404, 'Unknown application.');
-  return app;
+  if (app) return app;
+
+  // An update key in the id slot is the predictable mistake: it is the value in the
+  // updates URL, so it is the one users have to hand.
+  const byKey = await c.var.db
+    .select({ id: schema.applications.id })
+    .from(schema.applications)
+    .where(eq(schema.applications.updateKey, id))
+    .limit(1);
+
+  if (byKey[0]) {
+    throw new ApplicationError(
+      'NOT_FOUND',
+      404,
+      `"${id}" is an update key, not an application id — that is the value in the updates URL. Use ${byKey[0].id}.`,
+    );
+  }
+
+  throw new ApplicationError('NOT_FOUND', 404, 'Unknown application.');
 }
 
 applicationRoutes.get('/', async (c) =>

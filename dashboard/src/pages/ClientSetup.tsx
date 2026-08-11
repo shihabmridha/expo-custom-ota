@@ -26,8 +26,18 @@ export function ClientSetupPage() {
     <div className="space-y-4">
       <PageHeader title="Client setup" />
 
-      <Card>
+      <Card className="space-y-3">
         <CopyBlock label="OTA URL" value={data.otaUrl} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <CopyBlock
+            label="Update key (public, goes in your updates URL / app.json)"
+            value={data.updateKey}
+          />
+          <CopyBlock
+            label="Application id (UUID — use for --app / OTA_APP_ID and all /api/admin routes)"
+            value={data.applicationId}
+          />
+        </div>
       </Card>
 
       <Card className="space-y-3">

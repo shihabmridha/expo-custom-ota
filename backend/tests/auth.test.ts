@@ -279,13 +279,19 @@ describe('application lifecycle over HTTP', () => {
         headers: { cookie },
       }),
     );
-    const config = (await response.json()) as { appJsonSnippet: string; certificatePem: string };
+    const config = (await response.json()) as {
+      applicationId: string;
+      appJsonSnippet: string;
+      certificatePem: string;
+    };
 
     expect(config.certificatePem).toContain('BEGIN CERTIFICATE');
     expect(JSON.stringify(config)).not.toContain('PRIVATE KEY');
     // The snippet uses the header the real client sends.
     expect(config.appJsonSnippet).toContain('expo-channel-name');
     expect(config.appJsonSnippet).toContain('rsa-v1_5-sha256');
+    // The application id must be distinct from (and never confused with) the update key.
+    expect(config.applicationId).toBe(created.id);
   });
 });
 
