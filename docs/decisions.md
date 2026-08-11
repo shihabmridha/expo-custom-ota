@@ -304,6 +304,30 @@ documentation ("send an opaque id, not an email"), the off switch, retention, an
 is a single-table delete. It is also never logged: `updates.ts` logs `easClientId` and nothing
 else, because `user_id` is not in the logger's redaction list.
 
+## D17 — The CLI and the container images release on separate tags
+
+`v*` publishes the container images (`docker-publish.yml`). `cli-v*` publishes the CLI to GitHub
+Packages (`publish-cli.yml`). Both keep their `workflow_dispatch`.
+
+**Why:** they were both on `v*`, and `publish-cli.yml` fails when the tag and
+`packages/cli/package.json` disagree. So every server release — which is most releases, since the
+backend and dashboard move far more often than the CLI — had to bump the CLI version purely to
+satisfy that guard, republishing an unchanged package under a new number. `v0.1.2` is exactly
+that: a device-tracking release that shipped CLI 0.1.2 with no CLI changes in it.
+
+**Why not make the guard skip instead of fail.** That was considered and rejected: it reverses a
+deliberate choice recorded in the workflow's own comment ("Fail here instead, before anything is
+built"), and a silent skip cannot tell "the CLI genuinely did not change" apart from "someone
+forgot to bump it".
+
+**Why a tag rather than manual dispatch only.** Dispatch alone would be less machinery, but the
+release identity would live only in Actions history. A tag keeps it in git, which is the same
+reasoning behind `deployment_events` and this log.
+
+**The non-obvious safety property:** GitHub's tag filters anchor at the start of the ref name, so
+`cli-v0.1.3` does not match `v*`. The two tracks cannot trigger each other. That is what makes the
+namespacing safe, and it is why the CLI prefix goes in front rather than at the end.
+
 ---
 
 # Deviations from `expo-oat.md`

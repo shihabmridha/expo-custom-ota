@@ -1,9 +1,19 @@
 name: Publish CLI Package to GitHub Packages
 
+# Released on its own tag, not on `v*`.
+#
+# `v*` is the server release: it publishes the container images, and it moves
+# whenever the backend or dashboard changes — which is most of the time. The
+# CLI changes rarely and independently. Sharing one trigger meant every server
+# release had to bump `packages/cli/package.json` purely to satisfy the guard
+# below, or fail. A separate namespace decouples them.
+#
+# `cli-v0.1.3` does not match the `v*` glob in docker-publish.yml (that glob
+# anchors at the start of the ref name), so the two releases cannot collide.
 on:
   push:
     tags:
-      - 'v*'
+      - 'cli-v*'
   workflow_dispatch:
 
 permissions:
@@ -30,14 +40,17 @@ jobs:
           bun-version: latest
 
       # The tag is the release's identity, but `npm publish` uses whatever is
-      # in package.json. Without this guard, tagging v0.2.0 while package.json
-      # still says 0.1.0 either republishes the old version or fails deep in
-      # the publish step with a confusing "cannot publish over existing
-      # version". Fail here instead, before anything is built.
+      # in package.json. Without this guard, tagging cli-v0.2.0 while
+      # package.json still says 0.1.0 either republishes the old version or
+      # fails deep in the publish step with a confusing "cannot publish over
+      # existing version". Fail here instead, before anything is built.
+      #
+      # Skipped on `workflow_dispatch`, which has no tag to check against and
+      # publishes whatever version the checked-out commit carries.
       - name: Verify tag matches the package version
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/cli-v')
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
+          TAG="${GITHUB_REF_NAME#cli-v}"
           PKG=$(node -p "require('./packages/cli/package.json').version")
           if [ "$TAG" != "$PKG" ]; then
             echo "::error::Tag $GITHUB_REF_NAME implies version $TAG, but packages/cli/package.json says $PKG."

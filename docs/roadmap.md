@@ -168,7 +168,7 @@ passes (spec §61).
 - [x] One `Dockerfile` with `backend`/`dashboard` targets; images pushed to GHCR for amd64 and
       arm64 — see D13
 - [x] CI on every PR: typecheck, lint, tests, CLI bundle smoke test, and both Docker targets built
-- [ ] **After the first `v*` tag:** set the package to public at
+- [ ] **After the first `cli-v*` tag:** set the package to public at
       `github.com/shihabmridha?tab=packages → expo-custom-ota → Package settings → Change
       visibility`. GitHub Packages does not inherit visibility from the repository — a new package
       is private even from a public repo, so nobody but the owner can install it until this is
