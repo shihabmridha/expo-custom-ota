@@ -6,8 +6,10 @@ import { sql } from 'drizzle-orm';
 /**
  * Operational counters.
  *
- * Pre-aggregated per day so storage stays bounded regardless of traffic. No
- * device identifiers, no per-install tracking — those are explicit non-goals.
+ * Pre-aggregated per day so storage stays bounded regardless of traffic. These
+ * are counts only, never identifiers: per-install tracking lives in
+ * `device-tracking.ts` and is deliberately a separate write with a separate
+ * off switch (D16).
  */
 function utcDay(now = new Date()): string {
   return now.toISOString().slice(0, 10);

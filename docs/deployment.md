@@ -67,6 +67,21 @@ See `.env.example` for the full list. In production the server refuses to start 
 `SESSION_SECRET` or a localhost `OTA_PUBLIC_URL` — every problem is reported at once rather than
 one per restart.
 
+### Device tracking
+
+`DEVICE_TRACKING_ENABLED` (default `true`) records one row per install per application, keyed on
+the `EAS-Client-ID` every `expo-updates` client sends, plus an event when an install is served an
+update and when it confirms it is running one. This powers the dashboard's **Devices** tab.
+
+What is stored: a random per-install UUID, platform, channel, runtime version, which update it is
+running, and timestamps. No IP address, no user agent. A user id is stored **only** if your app
+chooses to send one (`x-ota-user-id`) — see `client-setup.md`, which tells app authors to send an
+opaque id rather than an email. Set `DEVICE_TRACKING_ENABLED=false` to store no device identifiers
+at all; the anonymous counters behind the Overview tab are unaffected either way.
+
+`DEVICE_TRACKING_RETENTION_DAYS` (default `90`, `0` = keep forever) is the age at which
+`bun run prune:devices` drops rows.
+
 ## Health
 
 `GET /health` returns `{ ok, db, storage }` and 503 when either dependency is unreachable. The
@@ -100,6 +115,12 @@ precede database rows during import.
 
 **Sessions are swept lazily.** Expired sessions are rejected on use; run a periodic
 `DELETE FROM sessions WHERE expires_at < …` if the table grows.
+
+**Device tracking retention is manual.** Run `bun run prune:devices` to report rows past
+`DEVICE_TRACKING_RETENTION_DAYS` and `-- --apply` to delete them — a good nightly cron job
+alongside `gc:assets`. The event log is already bounded by a unique index (an install polling
+forever adds nothing after its first row per update), so this exists to age out installs that
+are simply gone, not to contain runaway writes.
 
 ## Backups
 

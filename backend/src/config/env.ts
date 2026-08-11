@@ -41,6 +41,20 @@ export const envSchema = z
     MAX_ARCHIVE_ENTRIES: bytes(20_000),
     MAX_COMPRESSION_RATIO: bytes(200),
 
+    /**
+     * Per-install update tracking (`device_installs` / `device_update_events`).
+     * Set false to store no device identifiers at all; the anonymous daily
+     * counters in `usage_daily` are unaffected either way. See D16 in
+     * `docs/decisions.md`.
+     */
+    DEVICE_TRACKING_ENABLED: z
+      .string()
+      .default('true')
+      .transform((v) => v === 'true' || v === '1'),
+
+    /** Age at which `bun run prune:devices` drops rows. 0 keeps them forever. */
+    DEVICE_TRACKING_RETENTION_DAYS: z.coerce.number().int().min(0).default(90),
+
     /** Absolute path to the built dashboard. Unset means API-only. */
     DASHBOARD_DIST: z.string().optional(),
 

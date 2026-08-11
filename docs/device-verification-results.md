@@ -148,3 +148,22 @@ exemption there.
 
 _Not started._ Must pass independently: a working Android path proves nothing about the iOS
 client's certificate handling.
+
+## Pass 1 addendum — install identity
+
+_Not started._ Phase 14 (per-install tracking) keys every install row on the `EAS-Client-ID`
+header. [protocol-notes.md](protocol-notes.md) records it as universally sent by real clients,
+sourced from `FileDownloader.kt` / `FileDownloader.swift`, but **this repo has never observed
+it**: Pass 1 logged only `currentUpdateId` and `servedUpdateId`, and the `clientHeaders()` test
+helper did not send it until Phase 14 added it.
+
+`backend/src/routes/updates.ts` now logs `easClientId` on every `update_served` /
+`no_update_available` / `roll_back_to_embedded_served` line, at info level, so confirming it costs
+one existing procedure:
+
+1. Rebuild the release APK per [device-verification.md](device-verification.md).
+2. Repeat step 1 of Pass 1.
+3. `grep easClientId` the server log.
+
+Record the result here either way — a negative is as useful as a positive, because it decides
+whether `install-id` (via `Updates.setExtraParamAsync`) is the fallback or the primary path.

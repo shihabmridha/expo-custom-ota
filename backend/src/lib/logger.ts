@@ -31,6 +31,8 @@ export const LOG_EVENTS = [
   'no_update_available',
   'roll_back_to_embedded_served',
   'runtime_mismatch',
+  'device_identity_missing',
+  'device_tracking_failed',
 
   'asset_served',
   'storage_failure',

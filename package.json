@@ -22,6 +22,7 @@
     "db:studio": "bunx drizzle-kit studio --config=packages/db/drizzle.config.ts",
     "admin:create": "bun run backend/scripts/create-admin.ts",
     "gc:assets": "bun run backend/scripts/gc-assets.ts",
+    "prune:devices": "bun run backend/scripts/prune-device-tracking.ts",
     "e2e:setup": "bun run backend/scripts/e2e-setup.ts",
     "e2e:publish": "bun run backend/scripts/e2e-publish.ts",
     "cli": "bun run packages/cli/src/cli.ts",

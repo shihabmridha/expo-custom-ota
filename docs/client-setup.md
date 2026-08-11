@@ -107,6 +107,53 @@ await Updates.reloadAsync();
 Any header you want to override at runtime must already be declared in
 `updates.requestHeaders`.
 
+## Attributing updates to your own users
+
+The **Devices** tab shows which installs received each update. That works with no client changes:
+every `expo-updates` client already sends an `EAS-Client-ID` header — despite the name it comes
+from the client library, not from EAS — and the server keys installs on it. It is a random UUID
+minted on first run and reset on reinstall, so it identifies an *install*, never a person.
+
+To see your own user ids alongside them, send one. Add it to `requestHeaders`:
+
+```json
+"updates": {
+  "requestHeaders": {
+    "expo-channel-name": "production",
+    "x-ota-user-id": "usr_12345"
+  }
+}
+```
+
+**Send an opaque id, not an email address.** Whatever you send is stored verbatim and shown in
+the dashboard. It is never written to the server log, but it is in the database until pruned.
+
+**`requestHeaders` is baked in at build time.** A user id only known after login cannot go there
+— the value would be fixed for every user of that binary. Set it at runtime instead:
+
+```js
+import * as Updates from 'expo-updates';
+
+// Persisted by expo-updates and sent on every later update request.
+await Updates.setExtraParamAsync('userId', 'usr_12345');
+```
+
+Runtime overrides via `setUpdateRequestHeadersOverride` also work, but only for headers already
+declared in `requestHeaders` (see below).
+
+If your build somehow does not send `EAS-Client-ID`, you can supply your own install id the same
+way, as an extra param named `install-id`:
+
+```js
+await Updates.setExtraParamAsync('install-id', myPersistedUuid);
+```
+
+Note the key must be **lowercase**: `expo-extra-params` is a Structured Field dictionary, and
+RFC 8941 restricts keys to lowercase. A camelCase `installId` does not merely look wrong — the
+pair fails to parse and vanishes silently.
+
+To store nothing at all, run the server with `DEVICE_TRACKING_ENABLED=false`.
+
 ## Failure behaviour
 
 OTA must never be required for the app to start. If expo-custom-ota is offline, the network times out, no

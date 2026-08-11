@@ -400,3 +400,110 @@ describe('signing key rotation', () => {
     expect(() => insertKey('k3', 'a1', 'main', 'active')).not.toThrow();
   });
 });
+
+describe('device tracking', () => {
+  beforeEach(() => {
+    insertApp('a1', 'acadion', 'ota_1');
+    insertApp('a2', 'other', 'ota_2');
+  });
+
+  function insertInstall(
+    id: string,
+    applicationId: string,
+    clientId: string,
+    overrides: { source?: string; platform?: string } = {},
+  ) {
+    db.run(
+      `INSERT INTO device_installs
+         (id, application_id, client_id, client_id_source, platform, channel_name,
+          runtime_version, request_count, first_seen_at, last_seen_at)
+       VALUES (?, ?, ?, ?, ?, 'production', '1.0.0', 1, ?, ?)`,
+      [
+        id,
+        applicationId,
+        clientId,
+        overrides.source ?? 'eas',
+        overrides.platform ?? 'android',
+        NOW,
+        NOW,
+      ],
+    );
+  }
+
+  function insertEvent(
+    id: string,
+    applicationId: string,
+    clientId: string,
+    updateId: string,
+    kind: string,
+  ) {
+    db.run(
+      `INSERT INTO device_update_events
+         (id, application_id, client_id, update_id, kind, platform, created_at)
+       VALUES (?, ?, ?, ?, ?, 'android', ?)`,
+      [id, applicationId, clientId, updateId, kind, NOW],
+    );
+  }
+
+  test('rejects a duplicate (application, client) install', () => {
+    insertInstall('i1', 'a1', 'client-1');
+    expect(() => insertInstall('i2', 'a1', 'client-1')).toThrow(/UNIQUE/i);
+  });
+
+  test('allows the same client id under a different application', () => {
+    insertInstall('i1', 'a1', 'client-1');
+    // One physical install talking to two applications is two rows. This is the
+    // isolation invariant, not a bug.
+    expect(() => insertInstall('i2', 'a2', 'client-1')).not.toThrow();
+  });
+
+  test('rejects an invalid platform', () => {
+    expect(() => insertInstall('i1', 'a1', 'client-1', { platform: 'web' })).toThrow(/CHECK/i);
+  });
+
+  test('rejects an unknown client_id_source', () => {
+    expect(() => insertInstall('i1', 'a1', 'client-1', { source: 'guess' })).toThrow(/CHECK/i);
+  });
+
+  test('rejects a duplicate (app, client, update, kind) event', () => {
+    insertEvent('e1', 'a1', 'client-1', 'u1', 'served');
+    expect(() => insertEvent('e2', 'a1', 'client-1', 'u1', 'served')).toThrow(/UNIQUE/i);
+  });
+
+  test('allows served and confirmed for the same client and update', () => {
+    insertEvent('e1', 'a1', 'client-1', 'u1', 'served');
+    // `kind` is part of the key precisely so the funnel can hold both halves.
+    expect(() => insertEvent('e2', 'a1', 'client-1', 'u1', 'confirmed')).not.toThrow();
+  });
+
+  test('rejects an unknown event kind', () => {
+    expect(() => insertEvent('e1', 'a1', 'client-1', 'u1', 'installed')).toThrow(/CHECK/i);
+  });
+
+  test('a repeat ON CONFLICT DO NOTHING append leaves exactly one row', () => {
+    // The growth bound, asserted at the SQL level rather than through the
+    // service: this is what keeps a device polling on every launch for a year
+    // from adding a second row.
+    const append = () =>
+      db.run(
+        `INSERT INTO device_update_events
+           (id, application_id, client_id, update_id, kind, platform, created_at)
+         VALUES (?, 'a1', 'client-1', 'u1', 'served', 'android', ?)
+         ON CONFLICT DO NOTHING`,
+        [crypto.randomUUID(), NOW],
+      );
+
+    for (let i = 0; i < 10; i++) append();
+    expect(db.query('SELECT COUNT(*) AS n FROM device_update_events').get()).toEqual({ n: 1 });
+  });
+
+  test('cascades installs and events when an application is deleted', () => {
+    insertInstall('i1', 'a1', 'client-1');
+    insertEvent('e1', 'a1', 'client-1', 'u1', 'served');
+    insertInstall('i2', 'a2', 'client-1');
+
+    db.run('DELETE FROM applications WHERE id = ?', ['a1']);
+    expect(db.query('SELECT COUNT(*) AS n FROM device_installs').get()).toEqual({ n: 1 });
+    expect(db.query('SELECT COUNT(*) AS n FROM device_update_events').get()).toEqual({ n: 0 });
+  });
+});

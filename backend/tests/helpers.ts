@@ -80,12 +80,17 @@ export class MemoryStorage implements AssetStorage {
   }
 }
 
-export function createTestApp(db: OtaDatabase, storage: AssetStorage = new MemoryStorage()) {
+export function createTestApp(
+  db: OtaDatabase,
+  storage: AssetStorage = new MemoryStorage(),
+  envOverrides: Record<string, string> = {},
+) {
   const env = loadEnv({
     NODE_ENV: 'test',
     OTA_PUBLIC_URL: 'http://localhost:3000',
     SIGNING_KEYS_DIRECTORY: SIGNING_FIXTURES,
     LOG_LEVEL: 'error',
+    ...envOverrides,
   });
   return { app: createApp({ env, db, storage, logger: createLogger('error') }), env, storage };
 }
@@ -230,6 +235,9 @@ export async function seedApplication(
   return { applicationId, channelId, releaseId, variantId, updateId, manifestJson };
 }
 
+/** Default install id, so `clientHeaders()` alone produces one tracked install. */
+export const TEST_CLIENT_ID = '11111111-2222-3333-4444-555555555555';
+
 /** Headers a real `expo-updates` client sends. */
 export function clientHeaders(overrides: Record<string, string | null> = {}): Headers {
   const headers = new Headers({
@@ -239,6 +247,7 @@ export function clientHeaders(overrides: Record<string, string | null> = {}): He
     'expo-api-version': '1',
     'expo-updates-environment': 'BARE',
     'expo-json-error': 'true',
+    'eas-client-id': TEST_CLIENT_ID,
     'expo-runtime-version': '1.0.0',
     'expo-channel-name': 'production',
   });
@@ -247,4 +256,12 @@ export function clientHeaders(overrides: Record<string, string | null> = {}): He
     else headers.set(key, value);
   }
   return headers;
+}
+
+/** `clientHeaders` for a specific install — the multi-device shorthand. */
+export function deviceHeaders(
+  clientId: string,
+  overrides: Record<string, string | null> = {},
+): Headers {
+  return clientHeaders({ 'eas-client-id': clientId, ...overrides });
 }

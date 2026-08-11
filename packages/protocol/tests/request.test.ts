@@ -217,3 +217,61 @@ describe('parseExpoUpdateRequest', () => {
     expect(result.ok && result.value.fatalError).toBe('TypeError: undefined');
   });
 });
+
+/**
+ * These two identifiers are what `device_installs` keys on, so a value that
+ * survives parsing becomes a row. Everything here is about what must *not*.
+ */
+describe('install and user identifiers', () => {
+  test('captures eas-client-id', () => {
+    const result = parse(realClientHeaders());
+    expect(result.ok && result.value.easClientId).toBe('8b3f9c1e-0000-4000-8000-000000000000');
+  });
+
+  test('captures x-ota-user-id', () => {
+    const result = parse(realClientHeaders({ 'x-ota-user-id': 'user_42' }));
+    expect(result.ok && result.value.userId).toBe('user_42');
+  });
+
+  test('userId is null when the header is absent', () => {
+    const result = parse(realClientHeaders());
+    expect(result.ok && result.value.userId).toBeNull();
+  });
+
+  test('an empty x-ota-user-id is null, not an empty string', () => {
+    const result = parse(realClientHeaders({ 'x-ota-user-id': '   ' }));
+    expect(result.ok && result.value.userId).toBeNull();
+  });
+
+  test('rejects an over-long identifier rather than truncating it', () => {
+    // Truncating would merge two distinct installs into one row. Dropping the
+    // value loses one install; truncating corrupts two.
+    const long = 'a'.repeat(200);
+    const result = parse(realClientHeaders({ 'eas-client-id': long, 'x-ota-user-id': long }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.easClientId).toBeNull();
+    expect(result.value.userId).toBeNull();
+  });
+
+  test('rejects an identifier containing an interior space', () => {
+    const result = parse(realClientHeaders({ 'x-ota-user-id': 'has space' }));
+    expect(result.ok && result.value.userId).toBeNull();
+  });
+
+  test('rejects an identifier containing control characters', () => {
+    // Bun's `Headers` accepts both a tab and a raw \x01, so the sanitiser is
+    // the only thing between these and a row in `device_installs`.
+    const tabbed = parse(realClientHeaders({ 'x-ota-user-id': 'a\tb' }));
+    expect(tabbed.ok && tabbed.value.userId).toBeNull();
+
+    const control = parse(realClientHeaders({ 'eas-client-id': 'a\x01b' }));
+    expect(control.ok && control.value.easClientId).toBeNull();
+  });
+
+  test('accepts an identifier at exactly the length limit', () => {
+    const exact = 'b'.repeat(128);
+    const result = parse(realClientHeaders({ 'eas-client-id': exact }));
+    expect(result.ok && result.value.easClientId).toBe(exact);
+  });
+});

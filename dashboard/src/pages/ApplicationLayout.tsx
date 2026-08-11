@@ -8,6 +8,7 @@ const TABS = [
   { to: 'releases', label: 'Releases' },
   { to: 'channels', label: 'Channels' },
   { to: 'deployments', label: 'Deployments' },
+  { to: 'devices', label: 'Devices' },
   { to: 'client-setup', label: 'Client setup' },
   { to: 'signing', label: 'Signing' },
   { to: 'simulator', label: 'Simulator' },

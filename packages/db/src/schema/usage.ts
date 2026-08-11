@@ -7,9 +7,13 @@ import { applications } from './applications.ts';
 /**
  * Daily counters, incremented by upsert.
  *
- * Pre-aggregated rather than an event log so storage stays bounded. This is
- * operational counting only — no device identifiers, no per-install tracking,
- * no adoption analytics. Those are explicit V1 non-goals.
+ * Pre-aggregated rather than an event log, so this table costs
+ * O(days × platforms × results) no matter how much traffic arrives. That is why
+ * it stays separate from `device_installs` now that per-install tracking exists
+ * (D16): these counters answer "how much", the device tables answer "who", and
+ * conflating them would make the cheap question as expensive as the dear one.
+ *
+ * Nothing here is per-device — a row is a count, never an identifier.
  */
 export const usageDaily = sqliteTable(
   'usage_daily',

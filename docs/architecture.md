@@ -140,8 +140,25 @@ the API does not even expose their filenames.
 No Git integration, webhooks, percentage rollouts, A/B testing, device or user targeting,
 branches, delta updates, organisations, RBAC, billing, or public signup. See `expo-oat.md` §55.
 
-This excludes two things that exist but are not V2 features from that list: `.github/workflows/`
+This excludes three things that exist but are not V2 features from that list: `.github/workflows/`
 runs lint, typecheck and tests on every push (repo hygiene, not a deploy pipeline triggered by
-publishing), and `packages/cli` is a published package for scripting uploads from a developer's
+publishing); `packages/cli` is a published package for scripting uploads from a developer's
 machine or their own CI — not a hosted build/publish service, webhook receiver, or anything else
-in the spec's V2 list.
+in the spec's V2 list; and **device tracking**, below.
+
+### Device tracking is not device targeting
+
+`device_installs` and `device_update_events` record which installs received each update, so the
+dashboard can answer "who is on release #7" and "who was served it but never launched it". That
+is a departure from §44 and is recorded as D16.
+
+The distinction that keeps it out of the V2 list is strict and load-bearing: these tables are
+**read-only observability**. `selectUpdate` does not read them and must never read them — what a
+device is served still depends only on (application, channel, platform, runtime version). Device
+*targeting* would make tracking data change what is served, and remains a non-goal. `CLAUDE.md`
+carries this as a hard rule so it survives future contributors.
+
+Cost, in one line: the steady state is one extra row-update per device poll. The state row is
+upserted, and the event log is appended only on a transition and deduplicated by a unique index,
+so it grows with installs × updates-they-touch rather than with poll frequency. Storing nothing
+at all is one env var away (`DEVICE_TRACKING_ENABLED=false`).

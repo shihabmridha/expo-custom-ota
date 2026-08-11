@@ -5,6 +5,7 @@ import { ApplicationsPage } from './pages/Applications.tsx';
 import { ChannelsPage } from './pages/Channels.tsx';
 import { ClientSetupPage } from './pages/ClientSetup.tsx';
 import { DeploymentsPage } from './pages/Deployments.tsx';
+import { DevicesPage } from './pages/Devices.tsx';
 import { LoginPage } from './pages/Login.tsx';
 import { NewApplicationPage } from './pages/NewApplication.tsx';
 import { OverviewPage } from './pages/Overview.tsx';
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
           { path: 'releases/:releaseId', element: <ReleaseDetailPage /> },
           { path: 'channels', element: <ChannelsPage /> },
           { path: 'deployments', element: <DeploymentsPage /> },
+          { path: 'devices', element: <DevicesPage /> },
           { path: 'client-setup', element: <ClientSetupPage /> },
           { path: 'signing', element: <SigningPage /> },
           { path: 'simulator', element: <SimulatorPage /> },

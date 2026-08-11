@@ -10,6 +10,7 @@ import { serveSpa } from './middleware/spa.ts';
 import { applicationRoutes } from './routes/admin/applications.ts';
 import { createAuthRoutes } from './routes/admin/auth.ts';
 import { channelRoutes } from './routes/admin/channels.ts';
+import { deviceRoutes } from './routes/admin/devices.ts';
 import { releaseRoutes } from './routes/admin/releases.ts';
 import { assetRoutes } from './routes/assets.ts';
 import { updatesRoutes } from './routes/updates.ts';
@@ -115,6 +116,7 @@ export function createApp(deps: AppDependencies) {
   app.route('/api/admin/applications', applicationRoutes);
   app.route('/api/admin/channels', channelRoutes);
   app.route('/api/admin', releaseRoutes);
+  app.route('/api/admin', deviceRoutes);
 
   // The built dashboard, mounted last so it only handles what the API did not.
   if (deps.env.DASHBOARD_DIST) {

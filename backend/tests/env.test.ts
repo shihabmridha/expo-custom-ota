@@ -75,3 +75,34 @@ describe('validation', () => {
     expect(env.OTA_PUBLIC_URL).toBe('https://ota.example.com');
   });
 });
+
+describe('device tracking configuration', () => {
+  test('defaults to enabled with 90 day retention', () => {
+    const env = loadEnv({ NODE_ENV: 'test' });
+    expect(env.DEVICE_TRACKING_ENABLED).toBe(true);
+    expect(env.DEVICE_TRACKING_RETENTION_DAYS).toBe(90);
+  });
+
+  test('DEVICE_TRACKING_ENABLED=false parses to a boolean, not a truthy string', () => {
+    const env = loadEnv({ NODE_ENV: 'test', DEVICE_TRACKING_ENABLED: 'false' });
+    expect(env.DEVICE_TRACKING_ENABLED).toBe(false);
+  });
+
+  test('DEVICE_TRACKING_ENABLED=1 is accepted as true', () => {
+    expect(
+      loadEnv({ NODE_ENV: 'test', DEVICE_TRACKING_ENABLED: '1' }).DEVICE_TRACKING_ENABLED,
+    ).toBe(true);
+  });
+
+  test('an empty retention value falls back to the default', () => {
+    // loadEnv strips empty strings so the Zod default applies; without that a
+    // blank line in .env would parse as 0 and disable pruning silently.
+    const env = loadEnv({ NODE_ENV: 'test', DEVICE_TRACKING_RETENTION_DAYS: '' });
+    expect(env.DEVICE_TRACKING_RETENTION_DAYS).toBe(90);
+  });
+
+  test('retention of 0 is allowed and means keep forever', () => {
+    const env = loadEnv({ NODE_ENV: 'test', DEVICE_TRACKING_RETENTION_DAYS: '0' });
+    expect(env.DEVICE_TRACKING_RETENTION_DAYS).toBe(0);
+  });
+});

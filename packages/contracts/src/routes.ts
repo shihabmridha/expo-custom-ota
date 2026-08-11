@@ -15,6 +15,13 @@ import {
 } from './schemas/application.ts';
 import { okResponseSchema } from './schemas/common.ts';
 import {
+  deviceAdoptionSchema,
+  deviceListQuerySchema,
+  deviceListSchema,
+  deviceRecipientsQuerySchema,
+  deviceRecipientsSchema,
+} from './schemas/device.ts';
+import {
   deploymentEventSchema,
   importReleaseQuerySchema,
   importReleaseResultSchema,
@@ -246,6 +253,32 @@ export const contracts = {
       response: signingKeySchema,
       auth: 'admin',
       summary: 'Generate an RSA-2048 code signing key and self-signed certificate',
+    }),
+  },
+
+  devices: {
+    adoption: route({
+      method: 'GET',
+      path: '/api/admin/applications/:id/device-adoption',
+      response: deviceAdoptionSchema,
+      auth: 'admin',
+      summary: 'Install counts per update — the adoption funnel',
+    }),
+    list: route({
+      method: 'GET',
+      path: '/api/admin/applications/:id/devices',
+      query: deviceListQuerySchema,
+      response: deviceListSchema,
+      auth: 'admin',
+      summary: 'What each install is currently running',
+    }),
+    recipients: route({
+      method: 'GET',
+      path: '/api/admin/applications/:id/updates/:updateId/devices',
+      query: deviceRecipientsQuerySchema,
+      response: deviceRecipientsSchema,
+      auth: 'admin',
+      summary: 'Who received update X, and who confirmed it',
     }),
   },
 } as const;

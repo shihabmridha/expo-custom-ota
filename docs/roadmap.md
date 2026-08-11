@@ -178,3 +178,27 @@ passes (spec §61).
 
 **Acceptance:** a developer with no access to this repository can install the CLI in their own
 Expo app and ship an update to a server running the published images.
+
+## Phase 14 — Per-install update tracking
+
+Answers "who received update X" and "what is each install running". A deliberate departure from
+spec §44/§55 — see **D16** in [decisions.md](decisions.md) and the "device tracking is not device
+targeting" section of [architecture.md](architecture.md).
+
+- [x] `eas-client-id` logged on the update path so a device run can confirm it arrives
+- [x] `x-ota-user-id` header, `sanitizeIdentifier`, and a three-tier identity chain
+      (`eas-client-id` → `install-id` extra param → `x-ota-user-id`)
+- [x] `device_installs` + `device_update_events`, migration `0002`, constraint tests
+- [x] `recordDeviceUpdate`: one upsert with `RETURNING`, idempotent event appends, a
+      compare-and-swap gate — one write in the steady state, and it can never break delivery
+- [x] `DEVICE_TRACKING_ENABLED` / `DEVICE_TRACKING_RETENTION_DAYS` + `bun run prune:devices`
+- [x] Admin API (adoption / installs / recipients) and the dashboard **Devices** tab
+- [ ] **Confirm on a real device that `EAS-Client-ID` actually arrives.** It is documented in
+      [protocol-notes.md](protocol-notes.md) as universally sent, but has never been observed in
+      this repo — Pass 1 logged only `currentUpdateId` and `servedUpdateId`. If it turns out to be
+      absent, the `install-id` extra param becomes the primary path and `client-setup.md` must
+      lead with it.
+
+**Acceptance:** a real device produces exactly one `device_installs` row and exactly two
+`device_update_events` rows (`served`, then `confirmed`) across one update cycle, and twenty
+subsequent polls add none.

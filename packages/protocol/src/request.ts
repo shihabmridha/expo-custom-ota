@@ -16,6 +16,7 @@ import {
   H_PROTOCOL_VERSION,
   H_RECENT_FAILED_UPDATE_IDS,
   H_RUNTIME_VERSION,
+  H_USER_ID,
   readHeader,
 } from './headers.ts';
 import { parseSfvDictionary, parseSfvStringDictionary, parseSfvStringList } from './sfv.ts';
@@ -35,7 +36,13 @@ export interface ExpoUpdateRequest {
   runtimeVersion: string;
   /** From `expo-channel-name`, or the legacy `x-ota-channel`. Null falls back to the app default. */
   channelName: string | null;
+  /**
+   * Per-install UUID minted by the client library. Sanitised, so a garbage
+   * value is null rather than something that would key a row.
+   */
   easClientId: string | null;
+  /** App-supplied, opaque, absent unless the app sets `x-ota-user-id`. */
+  userId: string | null;
   /** Normalised to lowercase — the client sends lowercased UUIDs. */
   currentUpdateId: string | null;
   embeddedUpdateId: string | null;
@@ -50,6 +57,25 @@ export interface ExpoUpdateRequest {
 
 /** Default keyid in the native client when `codeSigningMetadata.keyid` is unset. */
 const DEFAULT_KEY_ID = 'root';
+
+/** A UUID is 36 characters; this is generous headroom, not a target. */
+const MAX_IDENTIFIER_LENGTH = 128;
+/** Printable ASCII without spaces — everything a sane id uses, nothing that needs escaping. */
+const IDENTIFIER_PATTERN = /^[\x21-\x7e]+$/;
+
+/**
+ * Bound an identifier arriving in a header.
+ *
+ * Rejects rather than truncates: cutting two distinct 200-character ids down to
+ * 128 could silently merge two installs (or two users) into a single row, which
+ * is worse than dropping both. `readHeader` has already trimmed and mapped the
+ * empty string to null.
+ */
+export function sanitizeIdentifier(raw: string | null): string | null {
+  if (raw === null) return null;
+  if (raw.length > MAX_IDENTIFIER_LENGTH) return null;
+  return IDENTIFIER_PATTERN.test(raw) ? raw : null;
+}
 
 function parseAccept(raw: string | null): { multipart: boolean; json: boolean } {
   // No Accept header is treated as "anything", matching RFC 7231.
@@ -154,7 +180,8 @@ export function parseExpoUpdateRequest(
     platform: rawPlatform,
     runtimeVersion,
     channelName: readHeader(headers, H_CHANNEL_NAME) ?? readHeader(headers, H_CHANNEL_NAME_LEGACY),
-    easClientId: readHeader(headers, H_EAS_CLIENT_ID),
+    easClientId: sanitizeIdentifier(readHeader(headers, H_EAS_CLIENT_ID)),
+    userId: sanitizeIdentifier(readHeader(headers, H_USER_ID)),
     currentUpdateId: readHeader(headers, H_CURRENT_UPDATE_ID)?.toLowerCase() ?? null,
     embeddedUpdateId: readHeader(headers, H_EMBEDDED_UPDATE_ID)?.toLowerCase() ?? null,
     recentFailedUpdateIds: rawFailedIds ? parseSfvStringList(rawFailedIds) : [],

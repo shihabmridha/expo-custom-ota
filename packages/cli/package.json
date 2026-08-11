@@ -1,6 +1,6 @@
 {
   "name": "@shihabmridha/expo-custom-ota",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "CLI tool for packaging and publishing Expo custom OTA updates",
   "type": "module",
   "main": "./dist/cli.js",

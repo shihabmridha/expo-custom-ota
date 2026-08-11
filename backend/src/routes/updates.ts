@@ -12,6 +12,7 @@ import {
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import type { AppEnv } from '../app-env.ts';
+import { recordDeviceUpdate } from '../services/device-tracking.ts';
 import { selectUpdate } from '../services/selection.ts';
 import { SigningService } from '../services/signing.ts';
 import { recordUpdateRequest } from '../services/usage.ts';
@@ -83,8 +84,24 @@ updatesRoutes.all('/:updateKey', async (c) => {
     platform: request.platform,
     runtimeVersion: request.runtimeVersion,
     currentUpdateId: request.currentUpdateId,
+    // A random per-install UUID minted by the client library, not PII. Logged
+    // so a device run can confirm the header actually arrives — the whole of
+    // `device_installs` keys on it. Never log `userId`: that one is
+    // app-supplied and may be anything at all.
+    easClientId: request.easClientId,
   };
   logger.debug('update_requested', requestLog);
+
+  // Awaited rather than fire-and-forget: `bun:sqlite` is synchronous
+  // underneath, so voiding the promise buys no real latency, and awaiting is
+  // what keeps the integration tests deterministic.
+  const trackDevice = (servedUpdateId: string | null) =>
+    recordDeviceUpdate(db, logger, env.DEVICE_TRACKING_ENABLED, {
+      applicationId: application.id,
+      request,
+      channelName,
+      servedUpdateId,
+    });
 
   const decision = await selectUpdate(db, {
     applicationId: application.id,
@@ -148,6 +165,7 @@ updatesRoutes.all('/:updateKey', async (c) => {
 
       logger.info('update_served', { ...requestLog, servedUpdateId: decision.updateId });
       await recordUpdateRequest(db, application.id, request.platform, 'update_served');
+      await trackDevice(decision.updateId);
 
       return toResponse(
         buildUpdateResponse({
@@ -174,6 +192,7 @@ updatesRoutes.all('/:updateKey', async (c) => {
 
       logger.info('roll_back_to_embedded_served', requestLog);
       await recordUpdateRequest(db, application.id, request.platform, 'roll_back_to_embedded');
+      await trackDevice(null);
 
       return toResponse(
         await buildDirectiveResponse(rollBackToEmbeddedDirective(decision.commitTime), signer),
@@ -183,6 +202,7 @@ updatesRoutes.all('/:updateKey', async (c) => {
     default: {
       logger.info('no_update_available', { ...requestLog, reason: decision.reason });
       await recordUpdateRequest(db, application.id, request.platform, 'no_update_available');
+      await trackDevice(null);
 
       if (!canSendDirective) {
         return toResponse(

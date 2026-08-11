@@ -236,6 +236,74 @@ Relatedly, `pack` clears `dist/` before it runs `expo export`, and only when it 
 otherwise leaves the previous iOS bundle behind and the archive advertises a platform it has no
 current bundle for. Under `--skip-export` the caller owns `dist/` and it is left untouched.
 
+## D16 — Per-install tracking exists, and is observability rather than targeting
+
+`device_installs` (one upserted row per application × install) and `device_update_events` (an
+append-only `served` / `confirmed` log) record which installs receive each update. Identity is
+the `eas-client-id` every `expo-updates` client already sends, with two documented fallbacks:
+an `install-id` in `expo-extra-params`, then an app-supplied `x-ota-user-id`. Controlled by
+`DEVICE_TRACKING_ENABLED` (default true) and pruned by `bun run prune:devices` against
+`DEVICE_TRACKING_RETENTION_DAYS` (default 90).
+
+**Why, given §44 forbids it.** Spec §44 says "Do not build: user tracking, installation
+tracking, detailed device analytics, update adoption analytics" and §55 lists "complex
+analytics", "device targeting", "user targeting". This is a deliberate departure, requested
+explicitly, and it is narrower than what those clauses forbid: nothing here targets anything.
+`selectUpdate` is untouched and never reads either table — what a device is served still depends
+only on (application, channel, platform, runtime version). The moment tracking data feeds
+selection, this becomes the V2 feature the spec is refusing, so `CLAUDE.md` carries that as a
+hard rule.
+
+**Why two tables rather than the obvious event log.** An Expo app checks for updates on *every
+launch*, so a row per request grows with launches × installs and needs a retention job on day
+one. Instead the state table is upserted (bounded by install count) and the event log is appended
+only on a transition, deduplicated by `uniqueIndex(application_id, client_id, update_id, kind)`.
+Growth is installs × updates-they-touch × 2, independent of poll frequency. The unique index is
+the mechanism, not a safety net: every append is `ON CONFLICT DO NOTHING` against it, which is
+what replaces a read.
+
+**Why `served` and `confirmed` are separate.** The server only knows it handed out a manifest.
+Proof that an update actually launched arrives on the *next* request, as `expo-current-update-id`.
+Recording only "served" overstates adoption by counting downloads that failed or were rejected
+(a keyid mismatch, say). The gap between the two columns is the useful number.
+
+**Reconciling with D3 (no read-modify-write, no transactions).** The state write is a single
+`INSERT … ON CONFLICT DO UPDATE … RETURNING`; `RETURNING` is the write's own output, not a second
+statement, so the confirmation gate (`current_update_id != confirmed_update_id`) costs nothing
+and cannot race with itself. The confirmed append is one `INSERT … SELECT … WHERE EXISTS (a
+matching served row) ON CONFLICT DO NOTHING`. Advancing the gate afterwards is a compare-and-swap
+on `current_update_id`. The sequence is self-healing rather than atomic: a crash or a device that
+moves between statements leaves the gate open, and the next poll retries and hits `DO NOTHING` on
+whatever was already written. No lost write produces a wrong answer, only a delayed one.
+
+**The `WHERE EXISTS` is load-bearing for correctness.** Without it, an install reporting the
+bundle embedded in its binary — an update id this server never issued — registers as adoption.
+It is *not* a parser requirement: SQLite only rejects an upsert clause on an `INSERT … SELECT`
+when the SELECT has a `FROM`, and this one does not (verified against SQLite 3.51.0).
+
+**Cost.** Every device poll goes from one write transaction (`usage_daily`) to two. Under WAL
+there is a single writer at a time with `busy_timeout = 5000`, so at high poll rates these
+serialize; the design keeps the steady state to one row-update, which is the best achievable
+without batching. `device_installs` carries four indexes, so that is four b-tree updates per
+poll — `(application_id, current_update_id)` is the first to drop if write latency ever bites,
+at the cost of a scan in the adoption query. Two further mitigations exist and are deliberately
+**not** taken here: `PRAGMA synchronous = NORMAL` (a durability trade deserving its own record)
+and a single write queue.
+
+**Accepted limits.** An install served A → B → A logs `served(A)` once — the log means "first
+time this install saw X", and `last_served_at` / `request_count` carry recency. Installs that
+took an update before this shipped never emit `confirmed`. Pruning a `served` whose `confirmed`
+never arrived means served/confirmed ratios spanning a retention boundary are not comparable.
+A `user`-keyed row is one *user*, not one install, which is why `client_id_source` exists and is
+surfaced in the dashboard.
+
+**`x-ota-user-id` is unvalidated by construction.** Whatever the app sends is stored verbatim.
+`sanitizeIdentifier` bounds length and charset; it cannot bound meaning. The defences are
+documentation ("send an opaque id, not an email"), the off switch, retention, and keeping
+`user_id` on the install row only — never denormalized into the event log — so scrubbing a user
+is a single-table delete. It is also never logged: `updates.ts` logs `easClientId` and nothing
+else, because `user_id` is not in the logger's redaction list.
+
 ---
 
 # Deviations from `expo-oat.md`
@@ -244,9 +312,9 @@ Recorded because the spec document is otherwise authoritative.
 
 1. **`expo-channel-name` replaces `x-ota-channel`** in all examples — see D6. The spec doc is
    wrong relative to the real protocol.
-2. **Three tables added** beyond §9's list, each required by a stated objective the list doesn't
-   cover: `sessions` (§34 cookie auth), `deployment_events` (objective #10, deployment history),
-   `usage_daily` (§44 counters, with bounded storage).
+2. **Five tables added** beyond §9's list: `sessions` (§34 cookie auth), `deployment_events`
+   (objective #10, deployment history), `usage_daily` (§44 counters, with bounded storage), and
+   `device_installs` + `device_update_events` (per-install tracking — see item 9 below and D16).
 3. **`deployments.release_variant_id` is nullable**, paired with a mutually-exclusive `directive`
    column (`rollBackToEmbedded` + `commit_time`) under a CHECK constraint. This is the only
    mechanism that un-ships a bad update to devices that already took it, without publishing new
@@ -260,3 +328,12 @@ Recorded because the spec document is otherwise authoritative.
 6. **Runtime version is stored, not echoed.** The official reference server copies the client's
    `expo-runtime-version` header into the manifest; we treat that as a bug and emit the value
    recorded on the release variant at import time.
+7. **A publishing CLI exists** (`packages/cli`) despite §55 listing one as a non-goal — see
+   `docs/architecture.md`, which records why a scriptable packer is not the hosted build service
+   the spec is refusing.
+8. **Per-install tracking exists** despite §44's "do not build installation tracking / update
+   adoption analytics" and §55's "device targeting" / "user targeting" — see **D16**. The
+   departure is narrower than the prohibition: `device_installs` and `device_update_events` are
+   read-only observability, and `selectUpdate` neither reads them nor ever may. Tracking answers
+   "who received update X"; targeting would change *what* a device is served, and remains a
+   non-goal.

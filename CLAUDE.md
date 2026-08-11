@@ -75,6 +75,11 @@ PowerShell: `--filter '*'` needs single quotes. cmd.exe: use `"*"`.
   directive.
 - **Never respond `226 IM Used`** to an asset request carrying `A-IM: bsdiff`. Ignore the
   header, return a plain 200 with the full body.
+- **Never read `device_installs` or `device_update_events` from the update-selection path.**
+  Per-install tracking is read-only observability (D16); device *targeting* is a V2 non-goal
+  (spec §55). The moment tracking data changes what a device is served, that line is gone.
+- **Never log the value of `x-ota-user-id`.** It is app-supplied, may be anything, and is not in
+  the logger's redaction list. `easClientId` is a random install UUID and is fine to log.
 - No npm/npx/pnpm/yarn. No Node.js as the primary runtime. No Node-specific API where a Web
   standard or Bun built-in exists.
 - No Postgres idioms: no native enums, no arrays, no `SERIAL`, no JSONB operators.

@@ -41,6 +41,26 @@ export const UPDATE_REQUEST_RESULTS = [
 ] as const;
 export type UpdateRequestResult = (typeof UPDATE_REQUEST_RESULTS)[number];
 
+/**
+ * Which identifier keyed a `device_installs` row. See `resolveDeviceIdentity`.
+ *
+ * `eas` and `extra` are per install; `user` is per *user* and therefore
+ * collapses one person's devices into a single row. The dashboard must surface
+ * this, or a `user`-keyed row reads as an install and quietly misleads.
+ */
+export const DEVICE_CLIENT_ID_SOURCES = ['eas', 'extra', 'user'] as const;
+export type DeviceClientIdSource = (typeof DEVICE_CLIENT_ID_SOURCES)[number];
+
+/**
+ * `served`    — we handed this install the manifest for an update.
+ * `confirmed` — a later request reported it is now *running* that update.
+ *
+ * The pair is the install funnel: served without confirmed means downloaded but
+ * never launched, or launched and rejected (a signature mismatch, say).
+ */
+export const DEVICE_EVENT_KINDS = ['served', 'confirmed'] as const;
+export type DeviceEventKind = (typeof DEVICE_EVENT_KINDS)[number];
+
 /** Deployment target tuple. Never resolve an update without all four. */
 export interface DeploymentTarget {
   applicationId: string;

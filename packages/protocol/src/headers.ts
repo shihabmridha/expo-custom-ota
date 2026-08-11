@@ -34,6 +34,18 @@ export const H_EXTRA_PARAMS = 'expo-extra-params';
 export const H_CHANNEL_NAME = 'expo-channel-name';
 export const H_CHANNEL_NAME_LEGACY = 'x-ota-channel';
 
+/**
+ * Application-supplied user identifier. Like the channel this is not a protocol
+ * header — it travels through the generic `updates.requestHeaders` config, so
+ * its value is baked into the binary at build time. An id only known after
+ * login must instead be set at runtime with `Updates.setExtraParamAsync`, which
+ * arrives in `expo-extra-params`.
+ *
+ * Whatever the app sends is stored verbatim and shown in the dashboard. Send an
+ * opaque id, never an email address. See D16 in `docs/decisions.md`.
+ */
+export const H_USER_ID = 'x-ota-user-id';
+
 /** RFC 3229 delta encoding. We never implement it — ignore and return a full 200. */
 export const H_A_IM = 'a-im';
 
