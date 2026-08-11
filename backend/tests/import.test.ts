@@ -190,7 +190,7 @@ describe('importRelease — validation', () => {
       applicationId,
       archive: realArchive({ 'expoConfig.json': null }),
     });
-    await expect(promise).rejects.toThrow(/pack-update|isPublicConfig/);
+    await expect(promise).rejects.toThrow(/expo-custom-ota pack|isPublicConfig/);
   });
 
   test('rejects a bundle referenced but absent', async () => {

@@ -1,7 +1,8 @@
 # Deployment
 
-One container: the Bun backend serves `/api/*` and the built dashboard. No Postgres, Redis or
-Node containers.
+Two containers, one root `Dockerfile` with two build targets: `backend` (the Bun API) and
+`dashboard` (nginx serving the built SPA and proxying `/api` and `/health` to `backend`). No
+Postgres, Redis or Node containers.
 
 ```bash
 export OTA_PUBLIC_URL=https://ota.example.com
@@ -12,7 +13,7 @@ docker compose up -d
 Then create the first administrator:
 
 ```bash
-docker compose exec oat bun run backend/scripts/create-admin.ts \
+docker compose exec backend bun run backend/scripts/create-admin.ts \
   --email you@example.com --password 'a-long-password'
 ```
 
@@ -29,46 +30,42 @@ The server refuses to start in production if it still points at localhost.
 
 ## Storage and database
 
-Defaults are a local libSQL file and local filesystem storage, both under `/data`. Both are pure
-environment swaps:
+Uses Bun's native SQLite (`bun:sqlite`) and local filesystem storage, both under `/data`.
 
-| | Local (default) | Production |
+| Component | Path | Description |
 |---|---|---|
-| Database | `DATABASE_URL=file:/data/ota.db` | `DATABASE_URL=libsql://…` + `DATABASE_AUTH_TOKEN` |
-| Storage | `STORAGE_DRIVER=local` | `STORAGE_DRIVER=r2` + `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` |
-
-Set `R2_PUBLIC_URL` to serve asset bytes straight from the bucket instead of proxying them
-through the backend. Manifests then point at the bucket directly, which is what you want at any
-real traffic level.
+| Database | `/data/ota.db` | Local persistent SQLite database |
+| Storage | `/data/storage` | Content-addressed asset objects |
+| Keys | `/data/signing-keys` | Per-application RSA private signing keys |
 
 ## The /data volume
 
-It holds the libSQL file (if local), asset objects (if local), and — critically — the **private
-signing keys**.
+It holds the SQLite database file, asset objects, and — critically — the **private signing keys**.
 
 Losing it means every application's signing key is gone. Since the certificate is embedded in
 already-shipped binaries, those binaries can never receive another update: you would have to
 generate new keys and ship new binaries through the app stores. Back it up.
 
-If you use Turso and R2, only `/data/signing-keys` matters, and mounting it as a read-only
-secret is better than a volume.
-
 ## Reverse proxy
 
-Terminate TLS in front and forward to `:3000`. Set `TRUST_PROXY=true` so client IPs are read
-from `X-Forwarded-For` for rate limiting.
+The `backend` container already sits behind the `dashboard` container's nginx, which proxies
+`/api` and `/health` to it — `docker-compose.yml` sets `TRUST_PROXY=true` on `backend` for this
+reason, so client IPs are read from `X-Forwarded-For` for rate limiting. Point your own
+TLS-terminating reverse proxy at the `dashboard` container (`:80`), not directly at `backend`.
 
-Make sure the proxy does not rewrite request or response bodies. The manifest signature is over
-exact bytes; anything that re-encodes the body breaks verification.
+Make sure no proxy in the chain rewrites request or response bodies. The manifest signature is
+over exact bytes; anything that re-encodes the body breaks verification.
 
-Upload sizes need to be allowed through — the default limit is 500 MB
-(`MAX_UPLOAD_BYTES`). nginx needs `client_max_body_size` raised to match.
+Upload sizes need to be allowed through at every hop — the default limit is 500 MB
+(`MAX_UPLOAD_BYTES`). The bundled `dashboard/nginx.conf` already sets `client_max_body_size` to
+match; raise both together if you change `MAX_UPLOAD_BYTES`, and raise your own front-facing
+proxy's limit too.
 
 ## Environment
 
 See `.env.example` for the full list. In production the server refuses to start with a default
-`SESSION_SECRET`, a localhost `OTA_PUBLIC_URL`, or `STORAGE_DRIVER=r2` without R2 credentials —
-every problem is reported at once rather than one per restart.
+`SESSION_SECRET` or a localhost `OTA_PUBLIC_URL` — every problem is reported at once rather than
+one per restart.
 
 ## Health
 
@@ -77,23 +74,24 @@ container's healthcheck uses it.
 
 ## Base image constraint
 
-The Dockerfile currently uses `oven/bun:canary`, not a pinned version. Two reasons, both
-temporary:
+The Dockerfile currently uses `oven/bun:canary`, not a pinned version: there is no published
+`oven/bun:1.4` image yet, and `bun.lock` is written in Bun 1.4 lockfile format (version 2),
+which the published 1.3 images cannot read — `bun install` fails there with "Unknown lockfile
+version". Pin to `oven/bun:1.4` as soon as that image ships. Canary is not a stable base for
+production.
 
-- There is no published `oven/bun:1.4` image yet, and `bun.lock` is written in Bun 1.4 lockfile
-  format (version 2), which the published 1.3 images cannot read — `bun install` fails there with
-  "Unknown lockfile version".
-- `--frozen-lockfile` is omitted because Bun 1.4-canary reports "lockfile had changes" even
-  immediately after writing the lockfile itself. `bun.lock` is still committed and still drives
-  resolution.
-
-Pin to `oven/bun:1.4` and restore `--frozen-lockfile` as soon as that image ships. Canary is not
-a stable base for production.
+`--frozen-lockfile` was previously omitted here, documented as Bun 1.4-canary spuriously
+reporting "lockfile had changes". That diagnosis was wrong. The real cause was a drifted
+`bun.lock`: its `dashboard` block recorded every dependency as the literal string `"latest"`
+while `dashboard/package.json` carried `^` ranges, because the manifest was edited after the
+last install. Regenerating the lockfile fixed it, and `--frozen-lockfile` is now on in the
+Dockerfile. If it starts failing again, the lockfile is genuinely out of date — regenerate it
+with `bun install` and commit the result rather than dropping the flag.
 
 ## Known limitations
 
 **Rate limiting is in-memory.** It resets on restart and does not coordinate across instances.
-V1 is single-container by design; running multiple replicas weakens the login limit
+V1 runs a single `backend` replica by design; running multiple replicas weakens the login limit
 proportionally.
 
 **Asset garbage collection is manual.** Run `bun run gc:assets` to report unreferenced assets and
@@ -105,8 +103,10 @@ precede database rows during import.
 
 ## Backups
 
+Everything lives under the single `/data` volume, so one backup covers it:
+
 - `/data/signing-keys` — irreplaceable, as above.
-- The database — application metadata, releases, manifests and signatures. Turso handles this;
-  for the libSQL file, copy it while the server is stopped or use `VACUUM INTO`.
-- Object storage — R2 durability is usually sufficient. Assets are content-addressed, so a
-  restore never conflicts.
+- `/data/ota.db` — application metadata, releases, manifests and signatures. Copy it while the
+  server is stopped, or use SQLite's `VACUUM INTO` for a consistent snapshot without stopping it.
+- `/data/storage` — content-addressed asset objects. A restore never conflicts, since a given
+  hash always contains the same bytes.

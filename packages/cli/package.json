@@ -1,0 +1,37 @@
+{
+  "name": "@shihabmridha/expo-custom-ota",
+  "version": "0.1.0",
+  "description": "CLI tool for packaging and publishing Expo custom OTA updates",
+  "type": "module",
+  "main": "./dist/cli.js",
+  "bin": {
+    "expo-custom-ota": "./bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shihabmridha/expo-custom-ota.git",
+    "directory": "packages/cli"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "bun build src/cli.ts --target=node --format=esm --outdir=dist"
+  },
+  "devDependencies": {
+    "@ota/api-sdk": "workspace:*",
+    "@types/node": "^22.13.10",
+    "commander": "^14.0.3",
+    "fflate": "^0.8.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

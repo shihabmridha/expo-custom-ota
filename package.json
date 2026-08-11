@@ -23,12 +23,14 @@
     "admin:create": "bun run backend/scripts/create-admin.ts",
     "gc:assets": "bun run backend/scripts/gc-assets.ts",
     "e2e:setup": "bun run backend/scripts/e2e-setup.ts",
-    "e2e:publish": "bun run backend/scripts/e2e-publish.ts"
+    "e2e:publish": "bun run backend/scripts/e2e-publish.ts",
+    "cli": "bun run packages/cli/src/cli.ts",
+    "cli:build": "bun run --cwd packages/cli build"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.14",
+    "@biomejs/biome": "^2.5.7",
     "@types/bun": "^1.3.14",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
     "fflate": "^0.8.3"

@@ -34,9 +34,10 @@ export interface ExportMetadata {
  * The public Expo config, produced by `@expo/config`'s
  * `getConfig(dir, { isPublicConfig: true })`.
  *
- * `expo export` does NOT emit this — `scripts/pack-update.ts` generates it and
- * the importer requires it in the archive, because it becomes
- * `manifest.extra.expoClient` and is what populates `Constants.expoConfig`.
+ * `expo export` does NOT emit this — the `expo-custom-ota` CLI generates it
+ * during `pack`, and the importer requires it in the archive, because it
+ * becomes `manifest.extra.expoClient` and is what populates
+ * `Constants.expoConfig`.
  */
 export interface ExpoClientConfig {
   name?: string;

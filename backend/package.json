@@ -10,13 +10,14 @@
   },
   "dependencies": {
     "@expo/code-signing-certificates": "^0.0.6",
-    "@hono/zod-validator": "^0.7.4",
+    "@hono/zod-validator": "^0.9.0",
     "@ota/contracts": "workspace:*",
     "@ota/db": "workspace:*",
     "@ota/protocol": "workspace:*",
     "@ota/types": "workspace:*",
-    "fflate": "^0.8.2",
-    "hono": "^4.10.6",
-    "zod": "^4.1.13"
+    "fflate": "^0.8.3",
+    "hono": "^4.13.1",
+    "pino": "^10.3.1",
+    "zod": "^4.4.3"
   }
 }

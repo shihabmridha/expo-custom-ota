@@ -7,9 +7,9 @@ import type { AppEnv } from '../app-env.ts';
 /**
  * Asset delivery.
  *
- * Only used when assets are proxied through the backend (the local driver, or
- * R2 without a public bucket URL). When `R2_PUBLIC_URL` is set, manifests point
- * straight at the bucket and this route is never hit.
+ * Serves content-addressed asset bytes from local filesystem storage. Every
+ * manifest asset URL points back at this route — there is no alternate,
+ * bucket-backed path that bypasses it.
  */
 export const assetRoutes = new Hono<AppEnv>();
 

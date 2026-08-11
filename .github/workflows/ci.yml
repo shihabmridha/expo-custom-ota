@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+# One CI run per PR (or per branch) at a time; a new push cancels the run it
+# supersedes. Without this, opening a PR whose head also moves fires both the
+# `opened` and `synchronize` events and you pay for two identical runs — and
+# every later push stacks another, all racing to report on the same commit.
+# Keyed on the PR number where there is one, because `github.ref` for a
+# pull_request is `refs/pull/N/merge` and would not group with pushes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Lint / format check
+        run: bun run check
+
+      - name: Build CLI
+        run: bun run cli:build
+
+      - name: Test
+        run: bun test
+
+      - name: Smoke-test the CLI bundle
+        run: node packages/cli/bin/cli.js --version
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # amd64 only here: this job exists to catch a broken Dockerfile on PR,
+      # not to produce a release artifact. Multi-arch builds happen in
+      # docker-publish.yml on tag.
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: backend
+          platforms: linux/amd64
+          push: false
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build dashboard image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: dashboard
+          platforms: linux/amd64
+          push: false
+          cache-from: type=gha,scope=dashboard
+          cache-to: type=gha,mode=max,scope=dashboard

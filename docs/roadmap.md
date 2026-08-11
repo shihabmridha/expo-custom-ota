@@ -55,7 +55,8 @@ passes — a wrong byte here invalidates every layer above it.
       channels, releases, release_variants, assets, release_assets, deployments,
       deployment_events, usage_daily
 - [x] `PRAGMA foreign_keys = ON` on every connection (`bun:sqlite` defaults it OFF)
-- [x] Driver split: `bun:sqlite` for `file:`, `@libsql/client/web` for `libsql:`/`https:`
+- [x] Single `bun:sqlite` driver via `drizzle-orm/bun-sqlite` (an earlier `libsql:`/`https:`
+      driver split via `@libsql/client/web` was removed — see D11 in `docs/decisions.md`)
 - [x] `drizzle.config.ts` with POSIX-normalised absolute paths (drizzle-kit resolves relative to
       cwd, and its glob engine treats `\` as an escape)
 - [x] Constraint tests per spec §49
@@ -76,12 +77,13 @@ backend and dashboard.
 ## Phase 5 — Backend skeleton + storage
 
 - [x] Hono composition, `config/env.ts` (fail-fast Zod), context + error middleware
-- [x] `AssetStorage` interface + `local` and `r2` (`Bun.S3Client`) drivers
+- [x] `AssetStorage` interface + `local` driver (an `r2` `Bun.S3Client` driver was added later
+      and then removed — see D11 in `docs/decisions.md`)
 - [x] Structured JSON logging with spec §43 event names and key redaction
 - [x] In-memory rate limiting (moved to Phase 8, alongside the login route it protects)
 
 **Acceptance:** `GET /health` returns `{ ok, version, dbOk, storageOk }`; a missing env var prints
-every issue and exits non-zero; both storage drivers pass one shared contract test.
+every issue and exits non-zero; the storage driver passes its contract test.
 
 ## Phase 6 — Release importer
 
@@ -117,7 +119,9 @@ manifest verifies under openssl. App A never receives App B's release.
 
 ## Phase 9 — Publish / promote / rollback
 
-- [x] `db.batch()` + `ON CONFLICT DO UPDATE`; no read-modify-write anywhere
+- [x] `ON CONFLICT DO UPDATE` deployment upserts; no read-modify-write on the deployment pointer
+      (sequential statements otherwise — see the corrected D3 in `docs/decisions.md`, which flags
+      the surrounding release/variant/asset writes as not actually atomic)
 - [x] Promotion reuses the identical `release_variant_id` — no re-sign, no asset copy
 - [x] Rollback creates a new release with fresh ids/manifests over the same asset rows
 - [x] Published-release immutability
@@ -135,12 +139,14 @@ hard refresh.
 
 ## Phase 11 — Hardening, Docker, docs
 
-- [x] Security headers, body limits, error taxonomy, asset GC, session sweep
-- [x] Single-container Dockerfile; migrations on entrypoint; SPA served by Bun
+- [x] Dockerfile; migrations on entrypoint
 - [x] Docs per spec §57
 
-**Acceptance:** `docker build` + `docker run` serves both the API and the dashboard, with
-migrations applied on start.
+**Acceptance:** the container(s) built from the Dockerfile serve both the API and the dashboard,
+with migrations applied on start. (Originally a single Bun container serving the SPA directly;
+the Docker layout was later split into separate `backend`/`dashboard` targets with nginx serving
+the SPA — see `docs/deployment.md` for the current topology. The functional acceptance — one
+`docker compose up` gets you a working API and dashboard — still holds.)
 
 ## Phase 12 — Real-device verification · **needs physical devices**
 
@@ -152,3 +158,23 @@ Full procedure: [device-verification.md](device-verification.md). Test app: `e2e
 
 **Acceptance:** signed OTA updates land on both platforms. V1 is not production-ready until this
 passes (spec §61).
+
+## Phase 13 — Distribution: CLI package and container images
+
+- [x] `packages/cli` published to GitHub Packages as `@shihabmridha/expo-custom-ota`, built as a
+      dependency-free bundle — see D12 in [decisions.md](decisions.md)
+- [x] Cookie jar in `@ota/api-sdk` and an `XMLHttpRequest` guard in `@ota/api-client`, so the SDK
+      works under Node and Bun rather than browsers only
+- [x] One `Dockerfile` with `backend`/`dashboard` targets; images pushed to GHCR for amd64 and
+      arm64 — see D13
+- [x] CI on every PR: typecheck, lint, tests, CLI bundle smoke test, and both Docker targets built
+- [ ] **After the first `v*` tag:** set the package to public at
+      `github.com/shihabmridha?tab=packages → expo-custom-ota → Package settings → Change
+      visibility`. GitHub Packages does not inherit visibility from the repository — a new package
+      is private even from a public repo, so nobody but the owner can install it until this is
+      done. It cannot be automated and it is irreversible.
+- [ ] A tagged release verified end to end — install the published CLI in a scratch Expo project
+      and publish an update through it
+
+**Acceptance:** a developer with no access to this repository can install the CLI in their own
+Expo app and ship an update to a server running the published images.

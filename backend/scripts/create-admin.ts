@@ -28,7 +28,7 @@ if (password.length < 12) {
 }
 
 const env = loadEnv();
-const db = createDb({ url: env.DATABASE_URL, authToken: env.DATABASE_AUTH_TOKEN });
+const db = createDb({ url: env.DATABASE_URL });
 
 try {
   const admin = await createAdmin(db, { email, password, ...(name ? { name } : {}) });

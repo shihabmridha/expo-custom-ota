@@ -1,4 +1,4 @@
-import { createDb, type OtaDatabase } from '@ota/db';
+import { createDb, type OtaDatabase, runMigrations } from '@ota/db';
 import { sql } from 'drizzle-orm';
 import { createApp } from './app.ts';
 import { type Env, loadEnv } from './config/env.ts';
@@ -9,26 +9,33 @@ let env: Env;
 try {
   env = loadEnv();
 } catch (error) {
-  // Fail fast and loudly: a server that boots with bad configuration produces
-  // confusing failures much later.
+  // Must be console.error, not logger.error: the logger is not constructed
+  // until env.LOG_LEVEL below, and env loading is exactly what just failed.
   console.error((error as Error).message);
   process.exit(1);
 }
 
 const logger = createLogger(env.LOG_LEVEL);
-const db = createDb({ url: env.DATABASE_URL, authToken: env.DATABASE_AUTH_TOKEN });
+
+// Programmatically apply Drizzle migrations on backend startup
+try {
+  logger.info('applying_database_migrations', {
+    database: env.DATABASE_URL,
+  });
+  await runMigrations({ url: env.DATABASE_URL });
+} catch (error) {
+  logger.error('migration_failed', { message: (error as Error).message });
+  process.exit(1);
+}
+
+const db = createDb({ url: env.DATABASE_URL });
 const storage = createStorage(env);
 
 /**
- * Refuse to start against an unmigrated database.
- *
- * Without this the server boots happily and the first login fails with
- * "no such table: admins" — an error that points at the query rather than at
- * the cause, and which looks identical whether migrations were never run or the
- * server is pointed at the wrong database entirely. Both are worth naming.
+ * Verify database schema after migrations.
  */
 async function assertMigrated(database: OtaDatabase, current: Env): Promise<void> {
-  const where = current.DATABASE_URL.startsWith('file:') ? current.DATABASE_URL : '(remote libSQL)';
+  const where = current.DATABASE_URL;
 
   let hasSchema: boolean;
   try {
@@ -37,17 +44,16 @@ async function assertMigrated(database: OtaDatabase, current: Env): Promise<void
     );
     hasSchema = rows.length > 0;
   } catch (error) {
-    console.error(`Could not reach the database at ${where}\n  ${(error as Error).message}`);
+    logger.error('database_failure', {
+      message: `Could not reach the database at ${where}: ${(error as Error).message}`,
+    });
     process.exit(1);
   }
 
   if (!hasSchema) {
-    console.error(
-      `The database at ${where} has no schema — migrations have not been applied.\n\n` +
-        '  bun run db:migrate\n\n' +
-        'If you expected data here, check DATABASE_URL: this is the database the server ' +
-        'resolved, and a relative file: path is resolved against the repository root.',
-    );
+    logger.error('database_failure', {
+      message: `The database at ${where} has no schema — migrations failed to create schema.`,
+    });
     process.exit(1);
   }
 }
@@ -66,6 +72,5 @@ const server = Bun.serve({
 logger.info('server_started', {
   port: server.port,
   publicUrl: env.OTA_PUBLIC_URL,
-  storageDriver: env.STORAGE_DRIVER,
-  database: env.DATABASE_URL.startsWith('file:') ? env.DATABASE_URL : '(remote libSQL)',
+  database: env.DATABASE_URL,
 });

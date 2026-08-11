@@ -43,7 +43,7 @@ export const exportMetadataSchema = z.object({
       // `web` is excluded from OTA; tolerate and ignore it.
       web: z.unknown().optional(),
     })
-    .loose(),
+    .passthrough(),
 });
 
 export function parseExportMetadata(raw: string): ExportMetadata {

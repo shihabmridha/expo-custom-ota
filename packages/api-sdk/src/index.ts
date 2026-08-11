@@ -1,4 +1,5 @@
 import { type ApiClient, ApiError, createApiClient } from '@ota/api-client';
+import { withCookieJar } from './cookie-jar.ts';
 import type { ImportReleaseResult, ReleaseDetail } from './types.ts';
 
 export { ApiError } from '@ota/api-client';
@@ -22,7 +23,7 @@ export class OtaClient {
   constructor(options: OtaClientOptions) {
     this.api = createApiClient({
       baseUrl: options.baseUrl.replace(/\/+$/, ''),
-      ...(options.fetch ? { fetch: options.fetch } : {}),
+      fetch: withCookieJar(options.fetch ?? globalThis.fetch.bind(globalThis)),
     });
   }
 

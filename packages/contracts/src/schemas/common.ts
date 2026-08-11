@@ -35,19 +35,17 @@ export const slugSchema = z
   .string()
   .min(1)
   .max(64)
-  .regex(
-    /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-    'Must be lowercase alphanumeric with single hyphens, e.g. "acadion-mobile"',
-  );
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
+    error: 'Must be lowercase alphanumeric with single hyphens, e.g. "acadion-mobile"',
+  });
 
 export const channelNameSchema = z
   .string()
   .min(1)
   .max(64)
-  .regex(
-    /^[a-z0-9]+(?:[-_][a-z0-9]+)*$/,
-    'Must be lowercase alphanumeric with hyphens or underscores',
-  );
+  .regex(/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/, {
+    error: 'Must be lowercase alphanumeric with hyphens or underscores',
+  });
 
 /**
  * Runtime versions are opaque strings defined by the developer — never parsed
@@ -60,7 +58,6 @@ export const bundleIdentifierSchema = z
   .string()
   .min(1)
   .max(155)
-  .regex(
-    /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/,
-    'Must be a reverse-DNS identifier, e.g. "xyz.acadion.mobile"',
-  );
+  .regex(/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/, {
+    error: 'Must be a reverse-DNS identifier, e.g. "xyz.acadion.mobile"',
+  });

@@ -11,7 +11,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@libsql/client": "^0.17.4",
     "@ota/types": "workspace:*",
     "drizzle-orm": "^0.45.2"
   },

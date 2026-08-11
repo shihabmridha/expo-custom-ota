@@ -43,7 +43,7 @@ export const createApplicationInputSchema = z
     generateSigningKey: z.boolean().default(true),
   })
   .refine((v) => v.androidPackage || v.iosBundleIdentifier, {
-    message:
+    error:
       'Set at least one of androidPackage or iosBundleIdentifier. Without one, uploads cannot be ' +
       'checked against this application and an export for a different app would be accepted.',
     path: ['androidPackage'],

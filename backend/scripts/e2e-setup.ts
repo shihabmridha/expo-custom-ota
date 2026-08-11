@@ -26,7 +26,7 @@ const repoRoot = dirname(dirname(import.meta.dir));
 const certPath = join(repoRoot, 'e2e', 'expo-test-app', 'certs', 'certificate.pem');
 
 const env = loadEnv();
-const db = createDb({ url: env.DATABASE_URL, authToken: env.DATABASE_AUTH_TOKEN });
+const db = createDb({ url: env.DATABASE_URL });
 
 const existing = await db
   .select()

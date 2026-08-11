@@ -31,7 +31,7 @@ const EXPORT_DIR = join(REPO_ROOT, 'packages/protocol/tests/fixtures/expo-export
 const SIGNING_DIR = join(REPO_ROOT, 'packages/protocol/tests/fixtures/signing');
 
 const env = loadEnv();
-const db = createDb({ url: env.DATABASE_URL, authToken: env.DATABASE_AUTH_TOKEN });
+const db = createDb({ url: env.DATABASE_URL });
 const storage = createStorage(env);
 
 const metadata = parseExportMetadata(readFileSync(join(EXPORT_DIR, 'metadata.json'), 'utf8'));

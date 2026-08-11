@@ -82,7 +82,7 @@ export function digestAsset(bytes: Uint8Array): AssetDigest {
  * Storage key for a content-addressed object: `sha256/<first-2-hex>/<full-hex>`.
  *
  * Always POSIX separators — a `path.join` on Windows would emit backslashes
- * into R2 object keys and into signed manifest URLs.
+ * into object storage keys and into signed manifest URLs.
  */
 export function assetStorageKey(sha256HexDigest: string): string {
   return `sha256/${sha256HexDigest.slice(0, 2)}/${sha256HexDigest}`;

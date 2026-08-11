@@ -21,18 +21,17 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
 
-    "baseUrl": ".",
     "paths": {
-      "@ota/types": ["packages/types/src/index.ts"],
-      "@ota/types/*": ["packages/types/src/*"],
-      "@ota/protocol": ["packages/protocol/src/index.ts"],
-      "@ota/protocol/*": ["packages/protocol/src/*"],
-      "@ota/contracts": ["packages/contracts/src/index.ts"],
-      "@ota/contracts/*": ["packages/contracts/src/*"],
-      "@ota/db": ["packages/db/src/index.ts"],
-      "@ota/db/*": ["packages/db/src/*"],
-      "@ota/api-client": ["packages/api-client/src/index.ts"],
-      "@ota/api-sdk": ["packages/api-sdk/src/index.ts"]
+      "@ota/types": ["./packages/types/src/index.ts"],
+      "@ota/types/*": ["./packages/types/src/*"],
+      "@ota/protocol": ["./packages/protocol/src/index.ts"],
+      "@ota/protocol/*": ["./packages/protocol/src/*"],
+      "@ota/contracts": ["./packages/contracts/src/index.ts"],
+      "@ota/contracts/*": ["./packages/contracts/src/*"],
+      "@ota/db": ["./packages/db/src/index.ts"],
+      "@ota/db/*": ["./packages/db/src/*"],
+      "@ota/api-client": ["./packages/api-client/src/index.ts"],
+      "@ota/api-sdk": ["./packages/api-sdk/src/index.ts"]
     }
   }
 }

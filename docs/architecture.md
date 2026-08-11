@@ -10,8 +10,8 @@
         /api/v1/updates └───┬───────────────────┬──────┘
                             │                   │
                     ┌───────▼──────┐    ┌───────▼────────┐
-                    │ libSQL/Turso │    │ object storage │
-                    │  (Drizzle)   │    │  local  or R2  │
+                    │  bun:sqlite  │    │ local storage  │
+                    │  (Drizzle)   │    │  filesystem    │
                     └──────────────┘    └────────────────┘
 ```
 
@@ -19,12 +19,13 @@
 
 | Package | Responsibility | Depends on |
 |---|---|---|
+| `cli` | `expo-custom-ota` CLI for update packaging and publishing. | `api-sdk` |
 | `types` | Domain and protocol types. No runtime code. | — |
 | `protocol` | Expo Updates v1: parsing, manifests, multipart, signing, directives. Pure — no HTTP, no database, no filesystem. | `types` |
 | `contracts` | Zod schemas + route definitions. The single source of truth for the admin API. | `types` |
 | `api-client` | Typed fetch client generated from `contracts`. | `contracts` |
 | `api-sdk` | Ergonomic wrapper: uploads, polling, publish-and-wait. | `api-client` |
-| `db` | Drizzle schema, libSQL client, migrations. | `types` |
+| `db` | Drizzle schema, bun:sqlite client, migrations. | `types` |
 | `backend` | Hono app, services, storage drivers. | all |
 | `dashboard` | Admin SPA. | `api-client` |
 
@@ -136,6 +137,11 @@ the API does not even expose their filenames.
 
 ## What is deliberately not here
 
-No CI/CD or Git integration, webhooks, percentage rollouts, A/B testing, device or user
-targeting, branches, delta updates, organisations, RBAC, billing, public signup, or publishing
-tokens. See `expo-oat.md` §55.
+No Git integration, webhooks, percentage rollouts, A/B testing, device or user targeting,
+branches, delta updates, organisations, RBAC, billing, or public signup. See `expo-oat.md` §55.
+
+This excludes two things that exist but are not V2 features from that list: `.github/workflows/`
+runs lint, typecheck and tests on every push (repo hygiene, not a deploy pipeline triggered by
+publishing), and `packages/cli` is a published package for scripting uploads from a developer's
+machine or their own CI — not a hosted build/publish service, webhook receiver, or anything else
+in the spec's V2 list.

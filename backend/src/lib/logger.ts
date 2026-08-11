@@ -1,12 +1,17 @@
+import pino, { type Logger as PinoInstance } from 'pino';
+
 /**
- * Structured logging.
+ * Structured logging powered by Pino.
  *
- * JSON lines to stdout. Event names are a closed union so a typo fails to
+ * JSON lines output. Event names are a closed union so a typo fails to
  * compile rather than producing an unqueryable log stream.
  */
 
 export const LOG_EVENTS = [
   'server_started',
+  'applying_database_migrations',
+  'migration_failed',
+
   'application_created',
   'application_updated',
   'application_deleted',
@@ -43,14 +48,19 @@ export const LOG_EVENTS = [
 export type LogEvent = (typeof LOG_EVENTS)[number];
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-const LEVEL_ORDER: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, error: 40 };
-
 /**
- * Keys that must never reach the log stream, at any nesting level.
- * Checked by name, so a new field called `password` is redacted by default
- * rather than by remembering to redact it.
+ * Keys that must never reach the log stream.
+ *
+ * Pino's `redact.paths` matches literal paths, not key names at arbitrary
+ * depth — unlike the hand-rolled recursive `redact()` this replaced, which
+ * masked a key by name no matter how deeply it was nested. To approximate
+ * that, each name is listed at the top level, one wildcard level (`*.x`,
+ * e.g. a field nested under `error` or `body`) and two wildcard levels
+ * (`*.*.x`, e.g. a field nested under `body.user`). A secret buried three or
+ * more levels deep still leaks — keep bound fields shallow, or extend this
+ * list with an explicit path if that ever happens.
  */
-const REDACTED_KEYS = new Set([
+const REDACTED_KEY_NAMES = [
   'password',
   'passwordhash',
   'password_hash',
@@ -65,20 +75,9 @@ const REDACTED_KEYS = new Set([
   'private_key',
   'privatekeypem',
   'secret',
-  'r2secretaccesskey',
-  'r2_secret_access_key',
-]);
+];
 
-function redact(value: unknown): unknown {
-  if (value === null || typeof value !== 'object') return value;
-  if (Array.isArray(value)) return value.map(redact);
-
-  const out: Record<string, unknown> = {};
-  for (const [key, nested] of Object.entries(value)) {
-    out[key] = REDACTED_KEYS.has(key.toLowerCase()) ? '[redacted]' : redact(nested);
-  }
-  return out;
-}
+const REDACTED_PATHS = REDACTED_KEY_NAMES.flatMap((key) => [key, `*.${key}`, `*.*.${key}`]);
 
 export interface Logger {
   debug(event: LogEvent, fields?: Record<string, unknown>): void;
@@ -88,29 +87,28 @@ export interface Logger {
   child(bound: Record<string, unknown>): Logger;
 }
 
-export function createLogger(minLevel: LogLevel = 'info', bound: Record<string, unknown> = {}) {
-  const write = (level: LogLevel, event: LogEvent, fields?: Record<string, unknown>) => {
-    if (LEVEL_ORDER[level] < LEVEL_ORDER[minLevel]) return;
+export function createLogger(
+  minLevel: LogLevel = 'info',
+  bound: Record<string, unknown> = {},
+): Logger {
+  const pinoLogger: PinoInstance = pino({
+    level: minLevel,
+    redact: {
+      paths: REDACTED_PATHS,
+      censor: '[redacted]',
+    },
+    timestamp: () => `,"ts":"${new Date().toISOString()}"`,
+    formatters: {
+      level: (label) => ({ level: label }),
+    },
+    base: bound,
+  });
 
-    const line = {
-      ts: new Date().toISOString(),
-      level,
-      event,
-      ...(redact(bound) as Record<string, unknown>),
-      ...(redact(fields ?? {}) as Record<string, unknown>),
-    };
-    const serialized = JSON.stringify(line);
-    if (level === 'error' || level === 'warn') console.error(serialized);
-    else console.log(serialized);
-  };
-
-  const logger: Logger = {
-    debug: (event, fields) => write('debug', event, fields),
-    info: (event, fields) => write('info', event, fields),
-    warn: (event, fields) => write('warn', event, fields),
-    error: (event, fields) => write('error', event, fields),
+  return {
+    debug: (event, fields) => pinoLogger.debug({ event, ...(fields ?? {}) }),
+    info: (event, fields) => pinoLogger.info({ event, ...(fields ?? {}) }),
+    warn: (event, fields) => pinoLogger.warn({ event, ...(fields ?? {}) }),
+    error: (event, fields) => pinoLogger.error({ event, ...(fields ?? {}) }),
     child: (extra) => createLogger(minLevel, { ...bound, ...extra }),
   };
-
-  return logger;
 }

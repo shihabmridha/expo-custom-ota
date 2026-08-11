@@ -39,7 +39,7 @@ const channel = arg('channel', 'production')!;
 const message = arg('message');
 
 const env = loadEnv();
-const db = createDb({ url: env.DATABASE_URL, authToken: env.DATABASE_AUTH_TOKEN });
+const db = createDb({ url: env.DATABASE_URL });
 const storage = createStorage(env);
 const logger = createLogger('warn');
 

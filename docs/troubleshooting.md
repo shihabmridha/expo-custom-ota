@@ -96,7 +96,7 @@ wrong application, or the identifiers on the **Settings** tab are wrong.
 
 ## "Archive has no expoConfig.json"
 
-`expo export` does not produce it. Use `scripts/pack-update.ts`, which generates it from
+`expo export` does not produce it. Use `npx expo-custom-ota pack`, which generates it from
 `@expo/config` and zips everything together. Without it, `manifest.extra.expoClient` would be
 empty and `Constants.expoConfig` would be empty on device — a failure that only appears at
 runtime, which is why the upload is rejected instead.
@@ -111,7 +111,7 @@ explicit string.
 
 The archive is incomplete. Usually this means the `dist/` directory was zipped *as a directory*
 rather than its contents — entries end up as `dist/metadata.json` instead of `metadata.json`.
-Use `scripts/pack-update.ts`.
+Use `npx expo-custom-ota pack`.
 
 ## Uploads fail with "decompression bomb" or "expands to more than …"
 
@@ -137,40 +137,25 @@ On Windows, openssl ships with Git but is not on the PowerShell PATH. The tests 
 `C:\Program Files\Git\usr\bin\openssl.exe` and skip loudly if it is missing. Set `OPENSSL_BIN`
 to point at it.
 
-## `UNKNOWN_CERTIFICATE_VERIFICATION_ERROR` on a database command
-
-```
-TypeError: unknown certificate verification error
-  path: "https://localhost:8080/v2/pipeline"
-```
-
-`DATABASE_URL` uses `libsql://` against a local server. The libSQL client treats `libsql://` as
-TLS-required and rewrites it to `https://`, but `turso dev` / `sqld` serves plain HTTP.
-
-```bash
-DATABASE_URL=http://localhost:8080          # preferred
-DATABASE_URL=libsql://localhost:8080?tls=0  # or opt out explicitly
-```
-
-`libsql://` is correct for Turso cloud. See [turso.md](turso.md).
-
 ## Login fails with "no such table: admins"
 
 The server is pointed at a different database than the one you migrated — almost always an empty
 one it created itself.
 
 Check the startup line: it reports which database was resolved. If it says a `file:` path you
-did not expect, something ran the server from the wrong directory, so Bun never loaded the root
-`.env` and `DATABASE_URL` fell back to its default.
+did not expect, something ran the server from the wrong directory: `config/env.ts` resolves
+`DATABASE_URL` against `process.cwd()`, with no repo-root anchoring, so a `file:` path resolves
+relative to wherever the process was started, and Bun only auto-loads `.env` from that same cwd.
 
 ```bash
-bun run dev        # correct: scripts/dev.ts spawns the API from the repo root
-bun run dev:api    # correct
-cd backend && bun src/server.ts   # env is still resolved from the repo root, but prefer the above
+bun run dev                       # correct: scripts/dev.ts spawns the API from the repo root
+bun run dev:api                   # correct
+cd backend && bun src/server.ts   # wrong: cwd is backend/, not the repo root — .env and
+                                   # relative paths resolve against the wrong directory
 ```
 
-Delete any stray `backend/ota.db`, then `bun run db:migrate`. The server now refuses to start
-against an unmigrated database rather than failing on the first login.
+Delete any stray `backend/ota.db`, then `bun run db:migrate` from the repo root. The server now
+refuses to start against an unmigrated database rather than failing on the first login.
 
 ## Login returns 429
 
