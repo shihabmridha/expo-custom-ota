@@ -3,7 +3,7 @@ import { integer, text } from 'drizzle-orm/sqlite-core';
 /**
  * Shared column builders.
  *
- * SQLite/libSQL conventions, applied uniformly:
+ * SQLite conventions, applied uniformly:
  *  - ids are `text` UUIDs generated app-side, never autoincrement integers, so
  *    externally visible resources are not enumerable
  *  - timestamps are epoch-ms integers: sortable, timezone-free, index-friendly.

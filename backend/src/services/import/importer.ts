@@ -184,7 +184,7 @@ export async function importRelease(
       await fail(
         'MISSING_EXPO_CONFIG',
         `Archive has no ${EXPO_CONFIG_FILENAME}. \`expo export\` does not produce it — use ` +
-          '`bun run scripts/pack-update.ts` to build the archive, or generate it with ' +
+          '`npx expo-custom-ota pack` to build the archive, or generate it with ' +
           "@expo/config's getConfig(dir, { isPublicConfig: true }). Without it, " +
           'Constants.expoConfig is empty on device.',
       );

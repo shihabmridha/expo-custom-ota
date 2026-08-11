@@ -1,6 +1,6 @@
 # Development
 
-Bun 1.4+ is the only prerequisite. The default configuration uses a local libSQL file and local
+Bun 1.4+ is the only prerequisite. The default configuration uses Bun's native SQLite (`bun:sqlite`) and local
 filesystem storage, so nothing external is needed to run or test.
 
 ```bash
@@ -94,7 +94,7 @@ every signature.
 - `openssl` ships with Git but is not on the PowerShell PATH. Tests find it at
   `C:\Program Files\Git\usr\bin\openssl.exe` or via `OPENSSL_BIN`, and skip loudly otherwise.
 - Storage keys and archive paths use `path.posix` only. A `path.join` here emits backslashes
-  into R2 keys and signed manifest URLs.
+  into storage keys and signed manifest URLs.
 - `expo export` on Windows writes asset paths in `metadata.json` with backslashes. The importer
   normalises them; the fixture pins the behaviour.
 

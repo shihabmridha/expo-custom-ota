@@ -47,6 +47,9 @@ type CallArgs<R> = (HasKeys<PathParams<RoutePath<R>>> extends true
     /**
      * Upload progress. `fetch` cannot report it, so supplying this switches the
      * request to XMLHttpRequest — the only reason that code path exists.
+     * Browser-only: there is no `XMLHttpRequest` global in Node or Bun, so
+     * outside a browser this is silently ignored and the request falls back to
+     * plain `fetch` with no progress events.
      */
     onUploadProgress?: (loaded: number, total: number) => void;
     /** Raw body for `contentType: 'binary'` routes. */
@@ -127,7 +130,8 @@ async function toApiError(response: Response): Promise<ApiError> {
  *
  * `fetch` genuinely cannot report upload progress in browsers, and the release
  * upload is the one place where a progress bar matters. Confined to this
- * function.
+ * function. Browser-only — callers must guard with `typeof XMLHttpRequest !==
+ * 'undefined'` before reaching here, since no such global exists in Node or Bun.
  */
 function xhrUpload(
   url: string,
@@ -188,15 +192,16 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
       const payload = args.rawBody ?? (args.body as Blob | undefined);
       if (!payload) throw new ApiError(0, 'BAD_REQUEST', 'This route requires a rawBody');
 
-      response = args.onUploadProgress
-        ? await xhrUpload(url, contract.method, payload, args.onUploadProgress, args.signal)
-        : await fetchImpl(url, {
-            method: contract.method,
-            credentials: 'include',
-            headers: { 'content-type': 'application/zip' },
-            body: payload as BodyInit,
-            ...(args.signal ? { signal: args.signal } : {}),
-          });
+      response =
+        args.onUploadProgress && typeof XMLHttpRequest !== 'undefined'
+          ? await xhrUpload(url, contract.method, payload, args.onUploadProgress, args.signal)
+          : await fetchImpl(url, {
+              method: contract.method,
+              credentials: 'include',
+              headers: { 'content-type': 'application/zip' },
+              body: payload as BodyInit,
+              ...(args.signal ? { signal: args.signal } : {}),
+            });
     } else {
       response = await fetchImpl(url, {
         method: contract.method,

@@ -19,7 +19,7 @@ const apply = process.argv.includes('--apply');
 const graceDays = Number(process.argv[process.argv.indexOf('--grace-days') + 1] || '7');
 
 const env = loadEnv();
-const db = createDb({ url: env.DATABASE_URL, authToken: env.DATABASE_AUTH_TOKEN });
+const db = createDb({ url: env.DATABASE_URL });
 const storage = createStorage(env);
 
 const cutoff = new Date(Date.now() - graceDays * 86_400_000);

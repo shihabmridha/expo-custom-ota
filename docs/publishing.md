@@ -3,15 +3,37 @@
 ## The normal flow
 
 ```
-change JS  →  pack-update.ts  →  upload  →  publish to staging  →  test  →  promote to production
+change JS  →  expo-custom-ota pack  →  upload  →  publish to staging  →  test  →  promote to production
 ```
+
+There are two ways to get a release from your Expo project onto the server: package locally and
+upload through the dashboard (below), or use the CLI's `publish` command, which does both steps
+in one call.
 
 ### 1. Package
 
-From your Expo project:
+Install the CLI as a dev dependency in your Expo project. It is published to GitHub Packages,
+which requires a `read:packages` token to install even public packages, so this needs an
+`.npmrc` as well as the install itself:
+
+```
+@shihabmridha:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
 
 ```bash
-bun run /path/to/oat/scripts/pack-update.ts
+export GITHUB_TOKEN=ghp_yourtokenhere
+npm install --save-dev @shihabmridha/expo-custom-ota
+```
+
+Full setup, including how to create the token and what a 401 or 404 means, is in
+[`packages/cli/README.md`](../packages/cli/README.md) — that file is the canonical install guide
+and ships with the package itself.
+
+Then, from your Expo project:
+
+```bash
+npx expo-custom-ota pack
 ```
 
 This runs `expo export --platform all`, generates `expoConfig.json` (which `expo export` does
@@ -23,12 +45,22 @@ empty config, because the latter fails silently at runtime.
 
 ### 2. Upload
 
-**Applications → your app → Releases → Upload.** The upload returns immediately and the import
-runs in the background; the screen polls until it finishes.
+Either **Applications → your app → Releases → Upload** in the dashboard, or from the CLI:
+
+```bash
+npx expo-custom-ota publish \
+  --server https://ota.example.com --app <application-id> --channel production \
+  --email you@example.com --password '<a long password>'
+```
+
+`publish` runs `pack` and the upload in one step, then publishes the resulting release to the
+given channel. Either way, the upload returns immediately and the import runs in the background;
+the dashboard screen polls until it finishes, and the CLI waits for it before publishing.
 
 The importer validates the archive, checks the native identifiers against the application,
 hashes every file, deduplicates against existing assets, uploads only what is new, and builds
-and signs one manifest per platform. It ends as a **draft**.
+and signs one manifest per platform. It ends as a **draft** before `publish` points a channel at
+it.
 
 If it fails, the error says what and why, and the release stays unpublishable.
 

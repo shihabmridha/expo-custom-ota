@@ -1,0 +1,66 @@
+name: Publish CLI Package to GitHub Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish-cli:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # The tag is the release's identity, but `npm publish` uses whatever is
+      # in package.json. Without this guard, tagging v0.2.0 while package.json
+      # still says 0.1.0 either republishes the old version or fails deep in
+      # the publish step with a confusing "cannot publish over existing
+      # version". Fail here instead, before anything is built.
+      - name: Verify tag matches the package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG=$(node -p "require('./packages/cli/package.json').version")
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME implies version $TAG, but packages/cli/package.json says $PKG."
+            exit 1
+          fi
+          echo "Publishing version $PKG"
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Build CLI Package
+        run: bun run cli:build
+
+      - name: Smoke-test the CLI bundle
+        run: node packages/cli/bin/cli.js --version
+
+      - name: Setup Node.js for GitHub Packages
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@shihabmridha'
+
+      # Published from inside the package, not `npm publish --workspace=…`
+      # from the root: npm's workspace resolution and Bun's `workspace:*`
+      # protocol do not reliably agree, and the CLI's runtime deps are all
+      # devDependencies (npm strips those from the published manifest, which
+      # is the point — the bundle already inlines them).
+      - name: Publish CLI Package to GitHub Packages
+        working-directory: packages/cli
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

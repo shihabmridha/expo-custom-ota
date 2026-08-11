@@ -13,9 +13,9 @@ checks. `docs/decisions.md` records why things are the way they are.
 
 ## Stack
 
-Bun 1.4 (runtime, package manager, script runner, test runner) · Hono · Turso/libSQL +
-Drizzle + Drizzle Kit · Vite + React + TS · content-addressed object storage (local FS in
-dev, R2 in prod).
+Bun 1.4 (runtime, package manager, script runner, test runner) · Hono · `bun:sqlite` +
+Drizzle + Drizzle Kit · Vite + React + TS · content-addressed object storage (local
+filesystem).
 
 ## Layout
 
@@ -28,7 +28,7 @@ packages/
   contracts/   Zod schemas + route defs — the single source of truth for the admin API
   api-client/  typed fetch client derived from contracts
   api-sdk/     ergonomic wrapper (uploads, polling) for future CLI/CI
-  db/          Drizzle schema + libSQL client + migrations
+  db/          Drizzle schema + bun:sqlite client + migrations
 ```
 
 ## Commands
@@ -37,10 +37,13 @@ All cwd-sensitive scripts run **from the repo root**. `bun run dev` uses `script
 spawns the API with the repo root as its cwd — `bun run --filter '*' dev` would run it from
 `backend/`, where Bun would not find the root `.env`.
 
-As defence in depth, `config/env.ts` anchors everything to the repository root: it locates the
-workspace root, backfills from the root `.env`, and resolves `STORAGE_LOCAL_DIR`,
-`SIGNING_KEYS_DIRECTORY` and a relative `file:` `DATABASE_URL` against it. Do not reintroduce
-cwd-relative resolution.
+`config/env.ts` resolves `STORAGE_LOCAL_DIR`, `SIGNING_KEYS_DIRECTORY` and a relative `file:`
+`DATABASE_URL` against `process.cwd()` — there is no repo-root anchoring or `.env` backfill.
+This is safe only because every documented entry point already runs from the repo root:
+`scripts/dev.ts` sets the API's cwd explicitly, and the Docker image sets `DATABASE_URL`,
+`STORAGE_LOCAL_DIR` and `SIGNING_KEYS_DIRECTORY` as absolute paths via `ENV`. Do not run
+backend scripts from inside `backend/` — see the "no such table: admins" entry in
+`docs/troubleshooting.md`.
 
 ```bash
 bun install
@@ -76,7 +79,7 @@ PowerShell: `--filter '*'` needs single quotes. cmd.exe: use `"*"`.
   standard or Bun built-in exists.
 - No Postgres idioms: no native enums, no arrays, no `SERIAL`, no JSONB operators.
 - No V2 features (see spec §55): no CI/CD, webhooks, percentage rollouts, device targeting,
-  branches, delta updates, orgs, RBAC, billing, publishing CLI.
+  branches, delta updates, orgs, RBAC, billing.
 - Never log passwords, session tokens, cookies, or private key material.
 
 ## Windows notes
@@ -88,7 +91,7 @@ PowerShell: `--filter '*'` needs single quotes. cmd.exe: use `"*"`.
   `C:\Program Files\Git\usr\bin\openssl.exe`. Tests resolve it via `OPENSSL_BIN` →
   `Bun.which('openssl')` → that path, and skip loudly if absent.
 - Storage keys are built with `path.posix` only. A `path.join` on Windows emits `sha256\ab\…`
-  into R2 and into signed manifest URLs.
+  into local storage keys and into signed manifest URLs.
 - Developer Mode is off — do not create symlinks; rely on Bun's junctions.
 
 ## Conventions
@@ -99,7 +102,9 @@ PowerShell: `--filter '*'` needs single quotes. cmd.exe: use `"*"`.
   the client calls `UUID.fromString` on them.
 - Timestamps: `integer({ mode: 'timestamp_ms' })`. ISO strings appear only inside baked
   manifests.
-- Atomic multi-statement work uses `db.batch([...])` plus `INSERT … ON CONFLICT DO UPDATE`,
-  never read-modify-write.
+- Multi-statement writes use `INSERT … ON CONFLICT DO UPDATE` upserts against a unique
+  constraint, never read-modify-write. See D3 in `docs/decisions.md` — `db.batch()` is not
+  actually used anywhere in the codebase; correctness comes from the constraint, not from a
+  wrapping transaction.
 - At the end of each phase: tick `docs/roadmap.md`, append any new decision to
   `docs/decisions.md`.

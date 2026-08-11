@@ -91,7 +91,7 @@ git clone <repo> oat && cd oat
 export OTA_PUBLIC_URL=https://ota.acadion.xyz
 export SESSION_SECRET="$(openssl rand -hex 32)"
 docker compose up -d
-docker compose exec oat bun run backend/scripts/create-admin.ts \
+docker compose exec backend bun run backend/scripts/create-admin.ts \
   --email you@acadion.xyz --password '<a long password>'
 ```
 
@@ -206,7 +206,7 @@ it last or plan for a rebuild.
 
 ```bash
 adb logcat -s ExpoUpdates:V ReactNativeJS:V
-docker compose logs -f oat | grep -E 'update_served|no_update_available|signing_failure'
+docker compose logs -f backend | grep -E 'update_served|no_update_available|signing_failure'
 ```
 
 The dashboard's **Simulator** tab replays the same request server-side and reports whether the

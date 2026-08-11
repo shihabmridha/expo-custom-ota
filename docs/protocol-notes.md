@@ -283,7 +283,7 @@ const { exp } = require('@expo/config').getConfig(projectDir, {
 
 `isPublicConfig: true` strips private fields. The result becomes `manifest.extra.expoClient`,
 which is what populates `Constants.expoConfig` on device. We **require** it in the upload
-archive; `scripts/pack-update.ts` generates it.
+archive; the `expo-custom-ota` CLI's `pack` command generates it (`packages/cli/src/pack.ts`).
 
 ### Runtime version
 

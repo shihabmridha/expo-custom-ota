@@ -9,7 +9,7 @@
     "ios": "expo start --ios",
     "prebuild": "expo prebuild --clean",
     "build:apk": "expo run:android --variant release",
-    "pack": "bun run ../../scripts/pack-update.ts --project ."
+    "pack": "node ../../packages/cli/bin/cli.js pack --project ."
   },
   "dependencies": {
     "expo": "~57.0.11",

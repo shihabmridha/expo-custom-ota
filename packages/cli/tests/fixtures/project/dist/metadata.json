@@ -1,0 +1,10 @@
+{
+  "version": 0,
+  "bundler": "metro",
+  "fileMetadata": {
+    "ios": {
+      "bundle": "_expo/static/js/ios/index-abc123.hbc",
+      "assets": [{ "path": "assets/deadbeefdeadbeefdeadbeefdeadbeef", "ext": "png" }]
+    }
+  }
+}

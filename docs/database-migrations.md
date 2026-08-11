@@ -1,7 +1,7 @@
 # Database and migrations
 
-libSQL (SQLite) through Drizzle ORM, with Drizzle Kit generating migrations. Turso in
-production; a local file in development. The same schema and the same generated SQL serve both.
+SQLite through Drizzle ORM via Bun's native `bun:sqlite` driver, with Drizzle Kit generating
+migrations. Same local file, same schema, same generated SQL in development and production.
 
 ## Workflow
 
@@ -14,17 +14,13 @@ bun run db:studio     # browse
 Run these from the repository root. Migrations are committed, and production applies them on
 container start — the runtime image does not include Drizzle Kit.
 
-## The two drivers
+## One driver
 
-Chosen by URL scheme:
-
-| Scheme | Driver | Used for |
-|---|---|---|
-| `file:` | `bun:sqlite` | development, tests, Windows |
-| `libsql:` / `https:` | `@libsql/client/web` | Turso |
-
-`/web` is deliberate — it is pure `fetch`, so there are no native N-API bindings to build or
-fail. Both are typed as one `OtaDatabase`; the query builder API we use is identical.
+`createDb` always goes through `drizzle-orm/bun-sqlite` over Bun's built-in `bun:sqlite`. There
+is no URL-scheme branching and no alternate driver — `DATABASE_URL` is a `file:` path (or
+`:memory:` for tests), resolved to an absolute path and opened directly. This is a zero-dependency
+choice: no native N-API bindings to build, no network round trip, no separate database service to
+run or operate.
 
 ## Conventions
 
@@ -70,8 +66,11 @@ Deployment changes use `INSERT … ON CONFLICT DO UPDATE` rather than read-modif
 concurrency is handled by the unique constraint rather than by lock ordering. Release numbers
 are allocated with a single `INSERT … SELECT COALESCE(MAX(...),0)+1`.
 
-This suits libSQL over HTTP, where interactive transactions are awkward, and it makes the
-concurrent-publish behaviour a property of the schema rather than of the service code.
+This makes the concurrent-publish behaviour a property of the schema rather than of the service
+code — no wrapping transaction is needed for correctness. See D3 in `docs/decisions.md`: there is
+no `db.batch()` or interactive transaction anywhere in the codebase; each multi-statement
+operation runs as sequential awaited statements against `bun:sqlite`, and it is the upsert, not
+atomicity, that makes concurrent publishes deterministic.
 
 ## Adding a table
 

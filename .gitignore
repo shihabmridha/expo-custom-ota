@@ -3,7 +3,15 @@ dist/
 build/
 *.tsbuildinfo
 
-# Local dev database (libSQL file mode)
+# The CLI's test fixtures deliberately mirror an `expo export` output tree, so
+# they contain a `dist/` the rule above would strip. Without these negations
+# the fixture bodies are missing from a fresh clone and packages/cli's tests
+# fail in CI while passing locally. The directory must be re-included before
+# its contents, or Git never descends into it to see them.
+!packages/cli/tests/fixtures/**/dist/
+!packages/cli/tests/fixtures/**/dist/**
+
+# Local dev database (bun:sqlite file)
 *.db
 *.db-journal
 *.db-wal

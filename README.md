@@ -26,8 +26,7 @@ Developer                    expo-custom-ota                         Device
 
 ## Quick start
 
-Requires [Bun](https://bun.sh) 1.4+. Nothing else — the default configuration uses a local
-libSQL file and local filesystem storage.
+Requires [Bun](https://bun.sh) 1.4+. Uses Bun's native SQLite (`bun:sqlite`) and local filesystem storage out-of-the-box.
 
 ```bash
 bun install
@@ -39,13 +38,24 @@ bun run dev            # API on :3000, dashboard on :5173
 Open <http://localhost:5173>, create an application, and copy the config snippet from the
 **Client setup** tab into your Expo project's `app.json`.
 
-Then, in your Expo project:
+Then install the packaging CLI in your Expo project. It lives on GitHub Packages, which needs a
+`read:packages` token even for public packages, so it takes an `.npmrc` next to your
+`package.json`:
 
-```bash
-bun run /path/to/oat/scripts/pack-update.ts
+```
+@shihabmridha:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
-and upload the resulting `update.zip` from **Releases → Upload**.
+```bash
+export GITHUB_TOKEN=ghp_yourtokenhere
+npm install --save-dev @shihabmridha/expo-custom-ota
+npx expo-custom-ota pack
+```
+
+and upload the resulting `update.zip` from **Releases → Upload**. See
+[packages/cli/README.md](packages/cli/README.md) for token setup and troubleshooting, or use
+`npx expo-custom-ota publish` to package and upload in one step.
 
 ## Commands
 
@@ -70,13 +80,13 @@ All of these run from the repository root — Bun loads `.env` from the working 
 backend/     Bun + Hono API
 dashboard/   Vite + React admin SPA
 packages/
+  cli/         expo-custom-ota CLI tool
   types/       shared types, no runtime code
   protocol/    Expo Updates v1 — pure, no HTTP/DB/filesystem
   contracts/   Zod schemas + route definitions, the single source of truth
   api-client/  typed fetch client derived from contracts
   api-sdk/     ergonomic wrapper for scripts and CI
-  db/          Drizzle schema, libSQL client, migrations
-scripts/     pack-update.ts — builds an uploadable archive from an Expo project
+  db/          Drizzle schema, bun:sqlite client, migrations
 ```
 
 ## Production
@@ -89,9 +99,6 @@ Set `OTA_PUBLIC_URL` and `SESSION_SECRET` first. `OTA_PUBLIC_URL` is baked into 
 manifests as the asset URL prefix, so changing it after publishing invalidates existing
 manifests — get it right before the first publish.
 
-For Turso set `DATABASE_URL=libsql://…` and `DATABASE_AUTH_TOKEN`; for R2 set
-`STORAGE_DRIVER=r2` and the `R2_*` variables. Both are pure environment swaps.
-
 See [docs/deployment.md](docs/deployment.md).
 
 ## Documentation
@@ -102,10 +109,10 @@ See [docs/deployment.md](docs/deployment.md).
 | [development.md](docs/development.md) | Working on expo-custom-ota |
 | [deployment.md](docs/deployment.md) | Running it in production |
 | [client-setup.md](docs/client-setup.md) | Configuring an Expo app |
+| [cli README](packages/cli/README.md) | The `expo-custom-ota` CLI: packaging and publishing from an Expo project |
 | [device-verification.md](docs/device-verification.md) | Phase 12: proving updates reach a real device |
 | [publishing.md](docs/publishing.md) | Upload, publish, promote, roll back |
 | [code-signing.md](docs/code-signing.md) | Keys, certificates, rotation |
-| [turso.md](docs/turso.md) | libSQL setups, and the libsql:// TLS gotcha |
 | [database-migrations.md](docs/database-migrations.md) | Schema conventions and constraints |
 | [protocol-notes.md](docs/protocol-notes.md) | Expo Updates v1 ground truth — read before touching protocol code |
 | [troubleshooting.md](docs/troubleshooting.md) | Keyed by the errors the client actually prints |
