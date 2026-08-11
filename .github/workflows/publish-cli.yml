@@ -10,6 +10,13 @@ permissions:
   contents: read
   packages: write
 
+# Serialize releases, and never cancel one — a publish killed partway can
+# leave the registry holding a version the repository never finished
+# releasing, and npm will not let you re-publish over it.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   publish-cli:
     runs-on: ubuntu-latest

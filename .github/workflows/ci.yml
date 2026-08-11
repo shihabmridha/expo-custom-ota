@@ -5,6 +5,16 @@ on:
   push:
     branches: [master]
 
+# One CI run per PR (or per branch) at a time; a new push cancels the run it
+# supersedes. Without this, opening a PR whose head also moves fires both the
+# `opened` and `synchronize` events and you pay for two identical runs — and
+# every later push stacks another, all racing to report on the same commit.
+# Keyed on the PR number where there is one, because `github.ref` for a
+# pull_request is `refs/pull/N/merge` and would not group with pushes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest

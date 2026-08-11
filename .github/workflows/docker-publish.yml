@@ -10,6 +10,15 @@ permissions:
   contents: read
   packages: write
 
+# Serialize releases, and never cancel one. Two tags pushed close together
+# would otherwise race, and because both write the `latest` tag the loser
+# could finish last and leave `latest` pointing at the older release. Unlike
+# CI, cancel-in-progress must stay false here: killing a publish partway can
+# leave one of the two images pushed and the other not.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
