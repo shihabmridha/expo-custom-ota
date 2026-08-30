@@ -3,6 +3,7 @@ import { buildPath, contracts } from '@ota/contracts';
 import type { OtaDatabase } from '@ota/db';
 import * as schema from '@ota/db/schema/index';
 import { eq } from 'drizzle-orm';
+import { hashClientIp, UNKNOWN_CLIENT_IP } from '../src/lib/client-ip.ts';
 import { isOriginAllowed } from '../src/middleware/admin.ts';
 import { createAdmin } from '../src/services/auth.ts';
 import { createMigratedDb, createTestApp, MemoryStorage } from './helpers.ts';
@@ -87,6 +88,33 @@ describe('login', () => {
 
     expect(blocked.status).toBe(429);
     expect(blocked.headers.get('retry-after')).toBeTruthy();
+  });
+
+  test('a spoofed x-forwarded-for cannot buy a fresh rate-limit bucket', async () => {
+    // TRUST_PROXY is off by default, so the header must not be read at all —
+    // otherwise an attacker mints a new bucket per attempt.
+    for (let i = 0; i < 5; i++) {
+      await post(
+        '/api/admin/auth/login',
+        { email: EMAIL, password: 'wrong' },
+        { 'x-forwarded-for': `10.0.0.${i}` },
+      );
+    }
+    const blocked = await post(
+      '/api/admin/auth/login',
+      { email: EMAIL, password: 'wrong' },
+      { 'x-forwarded-for': '10.0.0.99' },
+    );
+
+    expect(blocked.status).toBe(429);
+  });
+
+  test('stores a hash of the client IP on the session, never the address', async () => {
+    await login();
+
+    const sessions = await db.select().from(schema.sessions);
+    expect(sessions[0]!.ipHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(sessions[0]!.ipHash).toBe(hashClientIp(UNKNOWN_CLIENT_IP));
   });
 
   test('rejects a malformed body with 422 and field errors', async () => {

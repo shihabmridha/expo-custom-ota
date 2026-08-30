@@ -20,8 +20,9 @@ const IMPORT_STEPS = ['uploaded', 'processing', 'assets_uploaded', 'ready'] as c
  * Release upload.
  *
  * The upload returns 202 and the import continues in the background, so this
- * screen polls until the release reaches a terminal state. A retry reuses the
- * same idempotency key, so a flaky connection cannot create duplicate releases.
+ * screen polls until the release reaches a terminal state. Every attempt sends
+ * an `idempotency-key` header, so a request redelivered by a flaky connection
+ * resolves to the release it already created instead of a duplicate.
  */
 export function UploadReleasePage() {
   const { id } = useParams<{ id: string }>();
@@ -42,6 +43,7 @@ export function UploadReleasePage() {
         params: { id: id! },
         query: { ...(message ? { message } : {}), filename: file.name },
         rawBody: file,
+        headers: { 'idempotency-key': idempotencyKey.current },
         onUploadProgress: (loaded, total) => setProgress(Math.round((loaded / total) * 100)),
       });
     },
@@ -153,8 +155,10 @@ export function UploadReleasePage() {
                 <ErrorNote>{release.data?.importError ?? 'Import failed'}</ErrorNote>
                 <Button
                   onClick={() => {
-                    // Same idempotency key: a retry resolves to the same
-                    // release rather than creating a duplicate.
+                    // A fresh key: the server treats a failed import as final
+                    // and replays it for the old key, so reusing it here would
+                    // hand back the same failure without re-importing.
+                    idempotencyKey.current = crypto.randomUUID();
                     setReleaseId(null);
                     upload.reset();
                   }}
@@ -171,8 +175,6 @@ export function UploadReleasePage() {
             )}
           </div>
         )}
-
-        <input type="hidden" value={idempotencyKey.current} />
       </Card>
     </>
   );

@@ -87,7 +87,7 @@ adapter to `Response`.
 Read `expo-channel-name` first, accept `x-ota-channel` as a legacy fallback, then fall back to
 `applications.default_channel`.
 
-**Why:** the V1 spec document in this repo (`expo-oat.md` §11, §40) uses `x-ota-channel`, but EAS
+**Why:** the V1 spec document (`expo-oat.md` §11, §40) uses `x-ota-channel`, but EAS
 and every existing Expo tool use `expo-channel-name`. Matching the ecosystem means an app already
 configured for EAS Update needs only a URL change. All client-config snippets in the dashboard and
 docs use `expo-channel-name`.
@@ -330,9 +330,10 @@ namespacing safe, and it is why the CLI prefix goes in front rather than at the 
 
 ---
 
-# Deviations from `expo-oat.md`
+# Deviations from the V1 spec
 
-Recorded because the spec document is otherwise authoritative.
+Recorded because the spec document is otherwise authoritative. The spec (`expo-oat.md`) was
+removed from the repo in 6954f00 — recover it with `git show 6954f00^:expo-oat.md`.
 
 1. **`expo-channel-name` replaces `x-ota-channel`** in all examples — see D6. The spec doc is
    wrong relative to the real protocol.

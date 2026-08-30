@@ -104,7 +104,7 @@ The channel is **not** a first-class protocol header. It arrives through the gen
 }
 ```
 
-The V1 spec doc in this repo (`expo-oat.md` §11, §40) shows `x-ota-channel`. That is
+The V1 spec doc (`expo-oat.md` §11, §40 — removed from the repo; `git show 6954f00^:expo-oat.md`) shows `x-ota-channel`. That is
 **wrong** — EAS and every existing tool use `expo-channel-name`. We read `expo-channel-name`
 first and accept `x-ota-channel` as a legacy fallback. See `docs/decisions.md` D6.
 

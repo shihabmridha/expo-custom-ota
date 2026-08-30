@@ -1,8 +1,8 @@
-# Client setup
+# Client setup and code signing
 
-Configuring an Expo app to receive updates from expo-custom-ota. The dashboard's **Client setup** tab
-generates all of this for your application — prefer copying from there, since it fills in the
-real URL and keyid.
+Configuring an Expo app to receive updates from expo-custom-ota. The dashboard's **Client
+setup** tab generates all of this for your application — prefer copying from there, since it
+fills in the real URL and keyid.
 
 ## app.json
 
@@ -46,34 +46,65 @@ does not have it, so change it whenever you change native dependencies.
 mechanism as `expo-channel-name`. Anything you put in `requestHeaders` is sent on every update
 request. If the header is absent, expo-custom-ota falls back to the application's default channel.
 
-**`codeSigningMetadata.keyid` must match exactly.** expo-custom-ota signs as `main` by default. A mismatch
-makes the client reject every update with "Key with keyid=… not found in client configuration" —
-it does not fall back to unsigned.
+**`codeSigningMetadata.keyid` must match exactly.** expo-custom-ota signs as `main` by default,
+while the native client's own default is `root` — always set it explicitly. A mismatch makes the
+client reject every update with "Key with keyid=… not found in client configuration"; it does
+not fall back to unsigned.
 
 **Updates are disabled in development builds.** You must test against a release build, and
 `expo-updates` typically applies a downloaded update on the *next* launch, so relaunch twice.
 
-## Code signing certificate
+## Code signing
 
-Download it from the **Signing** tab and save it as `certs/certificate.pem`. Commit it — it is a
-public certificate, and it must be embedded in the binary for verification to work. The private
-key never leaves the server.
+Signing is what makes a self-hosted update server safe: without it, anyone who can answer the
+update URL — a compromised host, a hostile network, a misconfigured proxy — can ship arbitrary
+JavaScript into your app. Do not run production unsigned. (An application with no signing key
+serves unsigned updates to clients not configured for signing, and returns a clear
+`SIGNING_UNAVAILABLE` error to clients that request a signature.)
 
-If you prefer Expo's CLI to manage it:
+**What you have to do: nothing extra.** expo-custom-ota generates a dedicated RSA-2048 key per
+application when you create it (or from the **Signing** tab). Download the certificate from the
+Signing tab, save it as `certs/certificate.pem`, and **commit it** — it is public, and the
+client verifies against the certificate it was built with, not one fetched at runtime. The
+private key stays on the server under `SIGNING_KEYS_DIRECTORY` — never in the database, never
+returned by the API. **Back that directory up**: the certificate is embedded in binaries
+already in the app stores, so a lost key means those binaries can never receive another update.
 
-```bash
-bunx expo-updates codesigning:configure \
-  --certificate-input-directory certs \
-  --key-input-directory ../keys
-```
+### This is not your app signing key
 
-but note that expo-custom-ota holds the private key, so generate the pair in expo-custom-ota and only bring the
-certificate over.
+Your Android keystore (or iOS distribution certificate) signs the *installable package*; the
+OTA key signs the *update manifest*, verified by `expo-updates` at runtime. They are not
+interchangeable, and reusing the app key would not even work:
+
+- `expo-updates` requires a certificate with `keyUsage: digitalSignature` and
+  `extKeyUsage: codeSigning` — a `keytool` certificate has neither and is rejected with
+  "First certificate in chain is not a code signing certificate".
+- Only RSA PKCS#1 v1.5 with SHA-256 is supported — an EC keystore key cannot be used at all.
+
+expo-custom-ota rejects both cases when a certificate is saved rather than letting them fail on
+device. Keeping the keys separate also contains the blast radius of a server compromise: the
+attacker can serve JavaScript, but cannot sign installable packages.
+
+### How it works, in one paragraph
+
+The manifest contains the SHA-256 of every asset and the client verifies those hashes after
+download, so one RSA signature (`rsa-v1_5-sha256` — the only algorithm `expo-updates` supports)
+over the exact manifest bytes protects everything. The signature travels as a per-part
+`expo-signature` header. Note the signature is standard base64 with padding while asset hashes
+are base64url without padding — different encodings, on purpose.
+
+### Rotation
+
+Rotating (Signing tab) generates a new key and retires the old one, but **does not re-sign
+existing releases** — signing happens at import time. After rotating you must republish, and,
+because the certificate is embedded in the binary, ship new binaries before devices can accept
+anything signed with the new key. Rotate rarely, and treat it as a native release, not a
+JavaScript one.
 
 ## Verifying before you build
 
-Use the **Simulator** tab. It replays exactly what your device will ask for and shows what it
-would get, including whether the signature verifies. That is much faster than a build cycle.
+Use the **Simulator** tab. It replays exactly what your device will ask for, shows what it
+would get, and reports whether the signature verifies — much faster than a build cycle.
 
 From the command line:
 
@@ -114,22 +145,12 @@ every `expo-updates` client already sends an `EAS-Client-ID` header — despite 
 from the client library, not from EAS — and the server keys installs on it. It is a random UUID
 minted on first run and reset on reinstall, so it identifies an *install*, never a person.
 
-To see your own user ids alongside them, send one. Add it to `requestHeaders`:
+To see your own user ids alongside them, send one. **Send an opaque id, not an email address** —
+whatever you send is stored verbatim and shown in the dashboard (never written to server logs,
+but in the database until pruned).
 
-```json
-"updates": {
-  "requestHeaders": {
-    "expo-channel-name": "production",
-    "x-ota-user-id": "usr_12345"
-  }
-}
-```
-
-**Send an opaque id, not an email address.** Whatever you send is stored verbatim and shown in
-the dashboard. It is never written to the server log, but it is in the database until pruned.
-
-**`requestHeaders` is baked in at build time.** A user id only known after login cannot go there
-— the value would be fixed for every user of that binary. Set it at runtime instead:
+`requestHeaders` is baked in at build time, so a user id only known after login cannot go there.
+Set it at runtime instead:
 
 ```js
 import * as Updates from 'expo-updates';
@@ -138,24 +159,15 @@ import * as Updates from 'expo-updates';
 await Updates.setExtraParamAsync('userId', 'usr_12345');
 ```
 
-Runtime overrides via `setUpdateRequestHeadersOverride` also work, but only for headers already
-declared in `requestHeaders` (see below).
-
-If your build somehow does not send `EAS-Client-ID`, you can supply your own install id the same
-way, as an extra param named `install-id`:
-
-```js
-await Updates.setExtraParamAsync('install-id', myPersistedUuid);
-```
-
-Note the key must be **lowercase**: `expo-extra-params` is a Structured Field dictionary, and
-RFC 8941 restricts keys to lowercase. A camelCase `installId` does not merely look wrong — the
+If your build somehow does not send `EAS-Client-ID`, supply your own install id the same way, as
+an extra param named `install-id`. Extra-param keys must be **lowercase**: `expo-extra-params`
+is an RFC 8941 Structured Field dictionary, and a camelCase key does not merely look wrong — the
 pair fails to parse and vanishes silently.
 
 To store nothing at all, run the server with `DEVICE_TRACKING_ENABLED=false`.
 
 ## Failure behaviour
 
-OTA must never be required for the app to start. If expo-custom-ota is offline, the network times out, no
-deployment exists, or the manifest request fails, the app keeps running its embedded or last
-cached bundle. Do not build startup logic that blocks on an update check.
+OTA must never be required for the app to start. If the server is offline, the network times
+out, no deployment exists, or the manifest request fails, the app keeps running its embedded or
+last cached bundle. Do not build startup logic that blocks on an update check.

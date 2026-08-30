@@ -10,7 +10,7 @@ export SESSION_SECRET="$(bun -e 'console.log(crypto.randomUUID()+crypto.randomUU
 docker compose up -d
 ```
 
-Then create the first administrator:
+Then create the first administrator (the only way — there is no registration route):
 
 ```bash
 docker compose exec backend bun run backend/scripts/create-admin.ts \
@@ -25,41 +25,37 @@ schema.
 It is baked into signed manifests as the asset URL prefix. Changing it afterwards leaves
 published manifests pointing at the old host, and they cannot simply be edited — that would
 invalidate their signatures. The fix is to republish, so it is much cheaper to get right first.
-
 The server refuses to start in production if it still points at localhost.
-
-## Storage and database
-
-Uses Bun's native SQLite (`bun:sqlite`) and local filesystem storage, both under `/data`.
-
-| Component | Path | Description |
-|---|---|---|
-| Database | `/data/ota.db` | Local persistent SQLite database |
-| Storage | `/data/storage` | Content-addressed asset objects |
-| Keys | `/data/signing-keys` | Per-application RSA private signing keys |
 
 ## The /data volume
 
-It holds the SQLite database file, asset objects, and — critically — the **private signing keys**.
+Everything persistent lives under one volume:
 
-Losing it means every application's signing key is gone. Since the certificate is embedded in
-already-shipped binaries, those binaries can never receive another update: you would have to
-generate new keys and ship new binaries through the app stores. Back it up.
+| Path | Holds |
+|---|---|
+| `/data/ota.db` | SQLite database: applications, releases, manifests, signatures |
+| `/data/storage` | Content-addressed asset objects |
+| `/data/signing-keys` | Per-application RSA **private signing keys** |
+
+**Back it up.** The signing keys are irreplaceable: the certificate is embedded in
+already-shipped binaries, so losing the keys means those binaries can never receive another
+update — you would have to ship new binaries through the app stores. Copy `ota.db` while the
+server is stopped, or use SQLite's `VACUUM INTO` for a consistent snapshot without stopping it.
+Asset objects restore without conflict, since a given hash always contains the same bytes.
 
 ## Reverse proxy
 
-The `backend` container already sits behind the `dashboard` container's nginx, which proxies
-`/api` and `/health` to it — `docker-compose.yml` sets `TRUST_PROXY=true` on `backend` for this
-reason, so client IPs are read from `X-Forwarded-For` for rate limiting. Point your own
-TLS-terminating reverse proxy at the `dashboard` container (`:80`), not directly at `backend`.
+Point your TLS-terminating reverse proxy at the `dashboard` container (`:80`), not directly at
+`backend` — nginx there already proxies `/api` and `/health` through, and `docker-compose.yml`
+sets `TRUST_PROXY=true` on `backend` so client IPs come from `X-Forwarded-For`.
 
-Make sure no proxy in the chain rewrites request or response bodies. The manifest signature is
-over exact bytes; anything that re-encodes the body breaks verification.
+Two constraints on every hop in the chain:
 
-Upload sizes need to be allowed through at every hop — the default limit is 500 MB
-(`MAX_UPLOAD_BYTES`). The bundled `dashboard/nginx.conf` already sets `client_max_body_size` to
-match; raise both together if you change `MAX_UPLOAD_BYTES`, and raise your own front-facing
-proxy's limit too.
+- **No body rewriting.** The manifest signature is over exact bytes; anything that re-encodes
+  the response breaks verification.
+- **Allow large uploads.** The default limit is 500 MB (`MAX_UPLOAD_BYTES`); the bundled
+  `dashboard/nginx.conf` sets `client_max_body_size` to match. Raise both together, plus your
+  own front proxy's limit.
 
 ## Environment
 
@@ -67,67 +63,34 @@ See `.env.example` for the full list. In production the server refuses to start 
 `SESSION_SECRET` or a localhost `OTA_PUBLIC_URL` — every problem is reported at once rather than
 one per restart.
 
-### Device tracking
-
-`DEVICE_TRACKING_ENABLED` (default `true`) records one row per install per application, keyed on
-the `EAS-Client-ID` every `expo-updates` client sends, plus an event when an install is served an
-update and when it confirms it is running one. This powers the dashboard's **Devices** tab.
-
-What is stored: a random per-install UUID, platform, channel, runtime version, which update it is
-running, and timestamps. No IP address, no user agent. A user id is stored **only** if your app
-chooses to send one (`x-ota-user-id`) — see `client-setup.md`, which tells app authors to send an
-opaque id rather than an email. Set `DEVICE_TRACKING_ENABLED=false` to store no device identifiers
-at all; the anonymous counters behind the Overview tab are unaffected either way.
-
-`DEVICE_TRACKING_RETENTION_DAYS` (default `90`, `0` = keep forever) is the age at which
-`bun run prune:devices` drops rows.
+Device tracking: `DEVICE_TRACKING_ENABLED` (default `true`) records one row per install —
+random install UUID, platform, channel, runtime version, which update it runs, timestamps; no
+IP, no user agent — powering the dashboard's **Devices** tab. Set it `false` to store no device
+identifiers at all. `DEVICE_TRACKING_RETENTION_DAYS` (default `90`, `0` = forever) is the age at
+which `bun run prune:devices` drops rows. See `client-setup.md` for the optional
+`x-ota-user-id` header.
 
 ## Health
 
 `GET /health` returns `{ ok, db, storage }` and 503 when either dependency is unreachable. The
 container's healthcheck uses it.
 
-## Base image constraint
+## Base image
 
-The Dockerfile currently uses `oven/bun:canary`, not a pinned version: there is no published
-`oven/bun:1.4` image yet, and `bun.lock` is written in Bun 1.4 lockfile format (version 2),
-which the published 1.3 images cannot read — `bun install` fails there with "Unknown lockfile
-version". Pin to `oven/bun:1.4` as soon as that image ships. Canary is not a stable base for
-production.
-
-`--frozen-lockfile` was previously omitted here, documented as Bun 1.4-canary spuriously
-reporting "lockfile had changes". That diagnosis was wrong. The real cause was a drifted
-`bun.lock`: its `dashboard` block recorded every dependency as the literal string `"latest"`
-while `dashboard/package.json` carried `^` ranges, because the manifest was edited after the
-last install. Regenerating the lockfile fixed it, and `--frozen-lockfile` is now on in the
-Dockerfile. If it starts failing again, the lockfile is genuinely out of date — regenerate it
-with `bun install` and commit the result rather than dropping the flag.
+The Dockerfile pins `oven/bun:1.4.0` (and `1.4.0-slim` for the runtime stage). Images older
+than 1.4 cannot read `bun.lock`'s format and fail with "Unknown lockfile version". When
+bumping, change both `FROM` lines together. If `--frozen-lockfile` fails in the build, the
+lockfile is genuinely out of date: regenerate with `bun install` and commit it rather than
+dropping the flag.
 
 ## Known limitations
 
-**Rate limiting is in-memory.** It resets on restart and does not coordinate across instances.
-V1 runs a single `backend` replica by design; running multiple replicas weakens the login limit
-proportionally.
-
-**Asset garbage collection is manual.** Run `bun run gc:assets` to report unreferenced assets and
-`-- --apply` to delete them. It has a 7-day grace period, because storage writes deliberately
-precede database rows during import.
-
-**Sessions are swept lazily.** Expired sessions are rejected on use; run a periodic
-`DELETE FROM sessions WHERE expires_at < …` if the table grows.
-
-**Device tracking retention is manual.** Run `bun run prune:devices` to report rows past
-`DEVICE_TRACKING_RETENTION_DAYS` and `-- --apply` to delete them — a good nightly cron job
-alongside `gc:assets`. The event log is already bounded by a unique index (an install polling
-forever adds nothing after its first row per update), so this exists to age out installs that
-are simply gone, not to contain runaway writes.
-
-## Backups
-
-Everything lives under the single `/data` volume, so one backup covers it:
-
-- `/data/signing-keys` — irreplaceable, as above.
-- `/data/ota.db` — application metadata, releases, manifests and signatures. Copy it while the
-  server is stopped, or use SQLite's `VACUUM INTO` for a consistent snapshot without stopping it.
-- `/data/storage` — content-addressed asset objects. A restore never conflicts, since a given
-  hash always contains the same bytes.
+- **Rate limiting is in-memory.** It resets on restart and does not coordinate across
+  instances. V1 runs a single `backend` replica by design.
+- **Asset garbage collection is manual.** `bun run gc:assets` reports unreferenced assets,
+  `-- --apply` deletes them, with a 7-day grace period (storage writes deliberately precede
+  database rows during import).
+- **Sessions are swept lazily.** Expired sessions are rejected on use; run a periodic
+  `DELETE FROM sessions WHERE expires_at < …` if the table grows.
+- **Device-tracking retention is manual.** `bun run prune:devices -- --apply` ages out installs
+  that are gone — a good nightly cron job alongside `gc:assets`.

@@ -17,6 +17,7 @@ import { updatesRoutes } from './routes/updates.ts';
 import { ApplicationError } from './services/applications.ts';
 import { ImportError } from './services/import/importer.ts';
 import { PublishError } from './services/publishing.ts';
+import { SigningService } from './services/signing.ts';
 
 export interface AppDependencies {
   env: Env;
@@ -35,6 +36,12 @@ export interface AppDependencies {
  */
 export function createApp(deps: AppDependencies) {
   const logger = deps.logger ?? createLogger(deps.env.LOG_LEVEL);
+
+  // Built once per app rather than per request: its signer cache only pays off
+  // if it outlives a request, and the no-update path signs a directive on every
+  // device poll. Key rotation invalidates the affected entry explicitly.
+  const signing = new SigningService(deps.db, deps.env.signingKeysDirAbsolute);
+
   const app = new Hono<AppEnv>();
 
   const allowedOrigins = [deps.env.OTA_PUBLIC_URL];
@@ -45,6 +52,7 @@ export function createApp(deps: AppDependencies) {
     c.set('env', deps.env);
     c.set('db', deps.db);
     c.set('storage', deps.storage);
+    c.set('signing', signing);
     c.set('logger', logger.child({ requestId }));
     c.header('x-request-id', requestId);
     await next();

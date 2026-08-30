@@ -34,7 +34,7 @@ Those are a different key with a different job; `keytool` certificates carry no
 `extKeyUsage: codeSigning`, which the client requires.
 
 Use the certificate from the application's **Signing** tab instead, and keep using your keystore
-to build the binary. See [code-signing.md](code-signing.md).
+to build the binary. See the code-signing section of [client-setup.md](client-setup.md).
 
 ## A rollBackToEmbedded is deployed, but `checkForUpdateAsync` says `isAvailable: false`
 

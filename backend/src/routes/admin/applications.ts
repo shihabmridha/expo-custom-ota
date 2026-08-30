@@ -117,8 +117,7 @@ applicationRoutes.delete('/:id', async (c) => {
 
 applicationRoutes.get('/:id/client-config', async (c) => {
   const app = await loadApplication(c, c.req.param('id'));
-  const signing = new SigningService(c.var.db, c.var.env.signingKeysDirAbsolute);
-  const key = await signing.getActiveKey(app.id);
+  const key = await c.var.signing.getActiveKey(app.id);
 
   const channels = await c.var.db
     .select({ name: schema.channels.name })
@@ -244,6 +243,10 @@ applicationRoutes.post(
       validityYears: body.validityYears,
     });
 
+    // The signer cache is keyed by application, not by key id, so the retired
+    // signer would keep being served until the process restarted.
+    c.var.signing.invalidate(app.id);
+
     // Anything already published was signed with the now-retired key and will
     // be rejected by clients configured for the new certificate.
     c.var.logger.warn('signing_failure', {
@@ -271,7 +274,7 @@ applicationRoutes.post(
     const app = await loadApplication(c, c.req.param('id'));
     const notes: string[] = [];
 
-    const signing = new SigningService(c.var.db, c.var.env.signingKeysDirAbsolute);
+    const { signing } = c.var;
     const key = await signing.getActiveKey(app.id);
     const signer = body.expectSignature ? await signing.getSigner(app.id) : null;
 

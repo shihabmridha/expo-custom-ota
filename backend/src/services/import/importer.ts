@@ -19,7 +19,7 @@ import {
   EXPORT_METADATA_FILENAME,
   type ExpoClientConfig,
 } from '@ota/types';
-import { eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Logger } from '../../lib/logger.ts';
 import type { SigningService } from '../signing.ts';
 import { ArchiveError, openZip, type ZipLimits } from './zip.ts';
@@ -141,7 +141,12 @@ export async function importRelease(
         status: schema.releases.importStatus,
       })
       .from(schema.releases)
-      .where(eq(schema.releases.idempotencyKey, input.idempotencyKey))
+      .where(
+        and(
+          eq(schema.releases.applicationId, input.applicationId),
+          eq(schema.releases.idempotencyKey, input.idempotencyKey),
+        ),
+      )
       .limit(1);
     const previous = existing[0];
     if (previous) {

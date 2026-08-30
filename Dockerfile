@@ -18,11 +18,10 @@
 # layout exists to fix.
 #
 # Base image note: bun.lock is written by Bun 1.4, whose lockfile format
-# (version 2) the published 1.3 images cannot read — `bun install` there fails
-# with "Unknown lockfile version". Until oven/bun:1.4 ships, the canary tag is
-# the only published image new enough. Pin to `oven/bun:1.4` as soon as it
-# exists; canary is not a stable base for production.
-FROM oven/bun:canary AS deps
+# (version 2) images older than 1.4 cannot read — `bun install` there fails
+# with "Unknown lockfile version". Pinned to an exact version so builds are
+# reproducible; keep both FROM lines on the same version when bumping.
+FROM oven/bun:1.4.0 AS deps
 WORKDIR /app
 COPY package.json bun.lock bunfig.toml ./
 COPY backend/package.json backend/
@@ -66,7 +65,7 @@ RUN bun run --cwd dashboard build
 # --- backend ------------------------------------------------------------
 # Workspace packages export raw TypeScript, so source is what ships — Bun
 # transpiles on the fly and there is no separate backend build artifact.
-FROM oven/bun:canary-slim AS backend
+FROM oven/bun:1.4.0-slim AS backend
 WORKDIR /app
 ENV NODE_ENV=production
 

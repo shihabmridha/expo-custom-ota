@@ -35,8 +35,7 @@ function toResponse(result: ProtocolHttpResponse): Response {
 }
 
 updatesRoutes.all('/:updateKey', async (c) => {
-  const { db, env, logger } = c.var;
-  const signing = new SigningService(db, env.signingKeysDirAbsolute);
+  const { db, env, logger, signing } = c.var;
 
   const parsed = parseExpoUpdateRequest(c.req.method, c.req.raw.headers);
   if (!parsed.ok) {

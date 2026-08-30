@@ -49,7 +49,14 @@ program
   .option('--platform <list>', 'Platforms to export: all, android, ios', 'all')
   .option('-s, --server <url>', 'Server URL (or set OTA_SERVER_URL)')
   .option('-a, --app <id>', 'Application ID (or set OTA_APP_ID)')
-  .option('-c, --channel <name>', 'Channel to publish to (defaults to production)', 'production')
+  // No Commander default here, deliberately — like its siblings above. A default
+  // would make `options.channel` always set, so `publishUpdate`'s
+  // `?? process.env.OTA_CHANNEL` could never be reached and the documented env
+  // var would be dead. The 'production' fallback lives in publish.ts instead.
+  .option(
+    '-c, --channel <name>',
+    'Channel to publish to (or set OTA_CHANNEL, defaults to production)',
+  )
   .option('-e, --email <email>', 'Admin email (or set OTA_EMAIL)')
   .option('-w, --password <password>', 'Admin password (or set OTA_PASSWORD)')
   .option('-m, --message <message>', 'Release message / notes')

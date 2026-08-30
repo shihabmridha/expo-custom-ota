@@ -23,11 +23,12 @@ filesystem).
 backend/     Bun + Hono API
 dashboard/   Vite + React SPA
 packages/
+  cli/         `expo-custom-ota` CLI (pack/publish), published to GitHub Packages
   types/       pure TS types, no runtime code, no deps
   protocol/    Expo Updates v1 — pure; no HTTP, no DB, no fs
   contracts/   Zod schemas + route defs — the single source of truth for the admin API
   api-client/  typed fetch client derived from contracts
-  api-sdk/     ergonomic wrapper (uploads, polling) for future CLI/CI
+  api-sdk/     ergonomic wrapper (uploads, polling) used by the CLI and CI scripts
   db/          Drizzle schema + bun:sqlite client + migrations
 ```
 

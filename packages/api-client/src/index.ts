@@ -54,6 +54,12 @@ type CallArgs<R> = (HasKeys<PathParams<RoutePath<R>>> extends true
     onUploadProgress?: (loaded: number, total: number) => void;
     /** Raw body for `contentType: 'binary'` routes. */
     rawBody?: Blob | ArrayBuffer | Uint8Array;
+    /**
+     * Extra request headers — `idempotency-key` on a release upload is the only
+     * current caller. The client's own `content-type` always wins: it is
+     * dictated by the contract, not by the caller.
+     */
+    headers?: Record<string, string>;
   };
 
 /**
@@ -126,6 +132,27 @@ async function toApiError(response: Response): Promise<ApiError> {
 }
 
 /**
+ * Merge caller-supplied headers underneath the client's own.
+ *
+ * A caller header that collides with one of ours is dropped rather than merged,
+ * whatever its casing: header names are case-insensitive, so `Content-Type` and
+ * `content-type` in the same object would otherwise reach the server as one
+ * comma-joined value.
+ */
+function mergeHeaders(
+  caller: Record<string, string> | undefined,
+  own: Record<string, string>,
+): Record<string, string> {
+  if (!caller) return own;
+  const reserved = new Set(Object.keys(own).map((name) => name.toLowerCase()));
+  const merged: Record<string, string> = {};
+  for (const [name, value] of Object.entries(caller)) {
+    if (!reserved.has(name.toLowerCase())) merged[name] = value;
+  }
+  return { ...merged, ...own };
+}
+
+/**
  * Upload with progress via XMLHttpRequest.
  *
  * `fetch` genuinely cannot report upload progress in browsers, and the release
@@ -137,6 +164,7 @@ function xhrUpload(
   url: string,
   method: string,
   body: Blob | ArrayBuffer | Uint8Array,
+  headers: Record<string, string>,
   onProgress: (loaded: number, total: number) => void,
   signal?: AbortSignal,
 ): Promise<Response> {
@@ -145,7 +173,7 @@ function xhrUpload(
     xhr.open(method, url, true);
     xhr.withCredentials = true;
     xhr.responseType = 'text';
-    xhr.setRequestHeader('content-type', 'application/zip');
+    for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value);
 
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) onProgress(event.loaded, event.total);
@@ -182,6 +210,7 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
       signal?: AbortSignal;
       onUploadProgress?: (loaded: number, total: number) => void;
       rawBody?: Blob | ArrayBuffer | Uint8Array;
+      headers?: Record<string, string>;
     } = {},
   ): Promise<unknown> {
     const url = `${baseUrl}${buildPath(contract.path, args.params ?? {})}${buildQueryString(args.query)}`;
@@ -192,23 +221,36 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
       const payload = args.rawBody ?? (args.body as Blob | undefined);
       if (!payload) throw new ApiError(0, 'BAD_REQUEST', 'This route requires a rawBody');
 
+      const headers = mergeHeaders(args.headers, { 'content-type': 'application/zip' });
+
       response =
         args.onUploadProgress && typeof XMLHttpRequest !== 'undefined'
-          ? await xhrUpload(url, contract.method, payload, args.onUploadProgress, args.signal)
+          ? await xhrUpload(
+              url,
+              contract.method,
+              payload,
+              headers,
+              args.onUploadProgress,
+              args.signal,
+            )
           : await fetchImpl(url, {
               method: contract.method,
               credentials: 'include',
-              headers: { 'content-type': 'application/zip' },
+              headers,
               body: payload as BodyInit,
               ...(args.signal ? { signal: args.signal } : {}),
             });
     } else {
+      const headers = mergeHeaders(
+        args.headers,
+        args.body !== undefined ? { 'content-type': 'application/json' } : {},
+      );
+
       response = await fetchImpl(url, {
         method: contract.method,
         credentials: 'include',
-        ...(args.body !== undefined
-          ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(args.body) }
-          : {}),
+        ...(Object.keys(headers).length > 0 ? { headers } : {}),
+        ...(args.body !== undefined ? { body: JSON.stringify(args.body) } : {}),
         ...(args.signal ? { signal: args.signal } : {}),
       });
     }

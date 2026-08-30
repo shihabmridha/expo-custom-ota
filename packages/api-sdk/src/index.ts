@@ -38,6 +38,12 @@ export class OtaClient {
     options: {
       message?: string;
       filename?: string;
+      /**
+       * Sent as `idempotency-key`. Defaults to a fresh UUID, so a redelivered
+       * upload resolves to the release it already created; pass your own to
+       * make a retry across process invocations idempotent too.
+       */
+      idempotencyKey?: string;
       onProgress?: (loaded: number, total: number) => void;
       signal?: AbortSignal;
     } = {},
@@ -49,6 +55,7 @@ export class OtaClient {
         ...(options.filename ? { filename: options.filename } : {}),
       },
       rawBody: archive,
+      headers: { 'idempotency-key': options.idempotencyKey ?? crypto.randomUUID() },
       ...(options.onProgress ? { onUploadProgress: options.onProgress } : {}),
       ...(options.signal ? { signal: options.signal } : {}),
     });
@@ -103,6 +110,7 @@ export class OtaClient {
       channel: string;
       message?: string;
       filename?: string;
+      idempotencyKey?: string;
       onProgress?: (loaded: number, total: number) => void;
       signal?: AbortSignal;
     },

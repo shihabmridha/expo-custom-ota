@@ -12,23 +12,11 @@ in one call.
 
 ### 1. Package
 
-Install the CLI as a dev dependency in your Expo project. It is published to GitHub Packages,
-which requires a `read:packages` token to install even public packages, so this needs an
-`.npmrc` as well as the install itself:
-
-```
-@shihabmridha:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
-```
-
-```bash
-export GITHUB_TOKEN=ghp_yourtokenhere
-npm install --save-dev @shihabmridha/expo-custom-ota
-```
-
-Full setup, including how to create the token and what a 401 or 404 means, is in
-[`packages/cli/README.md`](../packages/cli/README.md) — that file is the canonical install guide
-and ships with the package itself.
+Install the CLI as a dev dependency in your Expo project:
+`npm install --save-dev @shihabmridha/expo-custom-ota`. It is published to GitHub Packages,
+which requires a `read:packages` token and an `.npmrc` even for public packages —
+[`packages/cli/README.md`](../packages/cli/README.md) is the canonical install guide, including
+how to create the token and what a 401 or 404 means.
 
 Then, from your Expo project:
 

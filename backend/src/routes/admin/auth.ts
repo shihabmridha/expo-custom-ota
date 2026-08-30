@@ -2,6 +2,7 @@ import { contracts } from '@ota/contracts';
 import { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { AppEnv } from '../../app-env.ts';
+import { hashClientIp, resolveClientIp } from '../../lib/client-ip.ts';
 import { RateLimiter } from '../../lib/rate-limit.ts';
 import {
   createSession,
@@ -33,7 +34,7 @@ export function createAuthRoutes() {
     handle(contracts.auth.login, async (c, { body: { email, password } }) => {
       const { db, env, logger } = c.var;
 
-      const ip = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local';
+      const ip = resolveClientIp(c);
       const key = `${ip}:${email.toLowerCase()}`;
 
       if (!loginLimiter.check(key)) {
@@ -54,6 +55,9 @@ export function createAuthRoutes() {
       }
 
       const { token, expiresAt } = await createSession(db, admin.id, env.SESSION_TTL_HOURS, {
+        // Hashed, never raw: the column exists to correlate sessions without
+        // the table itself becoming a list of admin IP addresses.
+        ipHash: hashClientIp(ip),
         userAgent: c.req.header('user-agent'),
       });
 

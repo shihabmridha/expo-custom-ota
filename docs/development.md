@@ -1,14 +1,8 @@
 # Development
 
-Bun 1.4+ is the only prerequisite. The default configuration uses Bun's native SQLite (`bun:sqlite`) and local
-filesystem storage, so nothing external is needed to run or test.
-
-```bash
-bun install
-bun run db:migrate
-bun run admin:create -- --email you@example.com --password 'a-long-password'
-bun run dev
-```
+Bun 1.4+ is the only prerequisite. The default configuration uses Bun's native SQLite
+(`bun:sqlite`) and local filesystem storage, so nothing external is needed to run or test.
+Setup is the Quick start in the [README](../README.md).
 
 API on `:3000`, dashboard on `:5173`. Vite proxies `/api` to the backend, so the dashboard is
 **same-origin in development and production alike** — no CORS configuration, and cookie
@@ -77,17 +71,50 @@ dashboard, which is the point.
 ## Database changes
 
 ```bash
-bun run db:generate   # writes a migration from the schema
-bun run db:migrate    # applies it
+bun run db:generate   # diff the schema, write a migration
+bun run db:migrate    # apply pending migrations
+bun run db:studio     # browse
 ```
 
-Migrations are committed. SQLite conventions: `text` UUID primary keys, `integer` epoch-ms
-timestamps, JSON as `text`, statuses as `text` plus a CHECK constraint. No Postgres enums,
-arrays or `SERIAL`.
+Run these from the repository root. Migrations are committed; production applies them on
+container start. `createDb` always goes through `drizzle-orm/bun-sqlite` over Bun's built-in
+`bun:sqlite` — no URL-scheme branching, no alternate driver, no service to operate.
 
-`release_variants.manifest` is plain `text`, deliberately **not** Drizzle's `{ mode: 'json' }` —
-it holds the exact string that was signed, and parsing plus re-serializing would invalidate
-every signature.
+Conventions: `text` UUID primary keys generated app-side (externally visible resources should
+not be enumerable), `integer` epoch-ms timestamps (ISO strings appear only inside baked
+manifests), booleans as `integer` `{ mode: 'boolean' }`, statuses as `text` + TS union + CHECK
+constraint, JSON as `text` `{ mode: 'json' }`. Never: Postgres enums, array columns, `SERIAL`,
+JSONB operators, advisory locks.
+
+The one exception to JSON mode: `release_variants.manifest` is plain `text`, deliberately
+**not** Drizzle's `{ mode: 'json' }` — it holds the exact string that was signed, and parsing
+plus re-serializing would change the bytes and invalidate every signature (the protocol has no
+canonicalization step). There is a comment on the column saying so.
+
+### Constraints that carry weight
+
+| Constraint | Protects |
+|---|---|
+| `UNIQUE(deployments: application_id, channel_id, platform, runtime_version)` | One serving mapping per target; makes concurrent publishes deterministic via upsert |
+| `UNIQUE(applications.slug)`, `UNIQUE(applications.update_key)` | Identity |
+| `UNIQUE(channels: application_id, name)` | Per-application channels |
+| `UNIQUE(releases: application_id, release_number)` | Application-local numbering |
+| `UNIQUE(release_variants.update_id)` | Update ids are globally unique |
+| `UNIQUE(release_variants: release_id, platform)` | At most one variant per platform |
+| `UNIQUE(assets.sha256)` | Content addressing and deduplication |
+| Partial `UNIQUE(signing_keys.application_id) WHERE status='active'` | Exactly one active key per app, enforced by the database rather than a racy service check |
+| `CHECK((release_variant_id IS NOT NULL) <> (directive IS NOT NULL))` | A deployment serves either an update or a directive, never both or neither |
+
+`packages/db/tests/constraints.test.ts` asserts each against the generated SQL, including that
+foreign keys actually fire — `bun:sqlite` leaves `PRAGMA foreign_keys` **off** by default, so
+the client turns it on for every connection.
+
+Writes use `INSERT … ON CONFLICT DO UPDATE` rather than read-modify-write, so concurrency is
+handled by the unique constraint rather than lock ordering — see D3 in `docs/decisions.md`.
+
+Adding a table: add the schema file under `packages/db/src/schema/`, export it from `index.ts`,
+`bun run db:generate`, read the generated SQL (check constraints and partial indexes are easy
+to get wrong), add constraint tests, `bun run db:migrate`.
 
 ## Windows notes
 

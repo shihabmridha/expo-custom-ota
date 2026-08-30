@@ -161,4 +161,35 @@ describe('publishUpdate option/env precedence', () => {
     const options = importAndPublishMock.mock.calls[0]?.[2] as { channel: string };
     expect(options.channel).toBe('production');
   });
+
+  test('falls back to OTA_CHANNEL when --channel is not given', async () => {
+    process.env.OTA_CHANNEL = 'staging';
+
+    await publishUpdate({
+      ...baseOptions(),
+      serverUrl: 'https://ota.example.com',
+      appId: 'app_1',
+      email: 'admin@example.com',
+      password: 'secret',
+    });
+
+    const options = importAndPublishMock.mock.calls[0]?.[2] as { channel: string };
+    expect(options.channel).toBe('staging');
+  });
+
+  test('--channel (options.channel) beats OTA_CHANNEL', async () => {
+    process.env.OTA_CHANNEL = 'staging';
+
+    await publishUpdate({
+      ...baseOptions(),
+      serverUrl: 'https://ota.example.com',
+      appId: 'app_1',
+      channel: 'preview',
+      email: 'admin@example.com',
+      password: 'secret',
+    });
+
+    const options = importAndPublishMock.mock.calls[0]?.[2] as { channel: string };
+    expect(options.channel).toBe('preview');
+  });
 });

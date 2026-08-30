@@ -3,6 +3,7 @@ import type { AssetStorage } from '@ota/types';
 import type { Env } from './config/env.ts';
 import type { Logger } from './lib/logger.ts';
 import type { SessionAdmin } from './services/auth.ts';
+import type { SigningService } from './services/signing.ts';
 
 /** Context bound to every Hono request. */
 export interface AppEnv {
@@ -11,6 +12,8 @@ export interface AppEnv {
     storage: AssetStorage;
     env: Env;
     logger: Logger;
+    /** One per app instance — its signer cache is the point. */
+    signing: SigningService;
     requestId: string;
     /** Set by `requireAdmin`; absent on public routes. */
     admin?: SessionAdmin;

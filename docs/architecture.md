@@ -138,7 +138,8 @@ the API does not even expose their filenames.
 ## What is deliberately not here
 
 No Git integration, webhooks, percentage rollouts, A/B testing, device or user targeting,
-branches, delta updates, organisations, RBAC, billing, or public signup. See `expo-oat.md` §55.
+branches, delta updates, organisations, RBAC, billing, or public signup. See §55 of the V1
+spec (`expo-oat.md`, removed from the repo — recover it with `git show 6954f00^:expo-oat.md`).
 
 This excludes three things that exist but are not V2 features from that list: `.github/workflows/`
 runs lint, typecheck and tests on every push (repo hygiene, not a deploy pipeline triggered by

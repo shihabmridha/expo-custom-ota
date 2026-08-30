@@ -11,7 +11,6 @@ import {
   publishRelease,
   setRollBackToEmbedded,
 } from '../../services/publishing.ts';
-import { SigningService } from '../../services/signing.ts';
 import { handle } from './validate.ts';
 
 export const releaseRoutes = new Hono<AppEnv>();
@@ -164,7 +163,7 @@ releaseRoutes.delete('/releases/:releaseId', async (c) => {
 releaseRoutes.post(
   '/applications/:id/releases/import',
   handle(contracts.releases.import, async (c, { query }) => {
-    const { db, env, storage, logger } = c.var;
+    const { db, env, storage, logger, signing } = c.var;
 
     const buffer = await c.req.arrayBuffer();
     if (buffer.byteLength === 0) {
@@ -188,7 +187,7 @@ releaseRoutes.post(
       {
         db,
         storage,
-        signing: new SigningService(db, env.signingKeysDirAbsolute),
+        signing,
         logger,
         limits: {
           maxEntries: env.MAX_ARCHIVE_ENTRIES,
@@ -253,7 +252,7 @@ releaseRoutes.post(
       {
         db: c.var.db,
         logger: c.var.logger,
-        signing: new SigningService(c.var.db, c.var.env.signingKeysDirAbsolute),
+        signing: c.var.signing,
       },
       {
         sourceReleaseId: c.req.param('releaseId')!,
