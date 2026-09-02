@@ -150,21 +150,52 @@ whatever you send is stored verbatim and shown in the dashboard (never written t
 but in the database until pruned).
 
 `requestHeaders` is baked in at build time, so a user id only known after login cannot go there.
-Set it at runtime instead:
+Set it at runtime instead, as the `user-id` extra param:
 
 ```js
 import * as Updates from 'expo-updates';
 
 // Persisted by expo-updates and sent on every later update request.
-await Updates.setExtraParamAsync('userId', 'usr_12345');
+await Updates.setExtraParamAsync('user-id', 'usr_12345');
 ```
 
 If your build somehow does not send `EAS-Client-ID`, supply your own install id the same way, as
-an extra param named `install-id`. Extra-param keys must be **lowercase**: `expo-extra-params`
-is an RFC 8941 Structured Field dictionary, and a camelCase key does not merely look wrong — the
-pair fails to parse and vanishes silently.
+an extra param named `install-id`.
+
+Extra-param keys must be **lowercase, with hyphens**: `expo-extra-params` is an RFC 8941
+Structured Field dictionary, and a camelCase key such as `userId` does not merely look wrong —
+the *entire* header fails to parse and every extra param beside it vanishes too. The server logs
+`extra_params_unparsable` at debug level when that happens.
 
 To store nothing at all, run the server with `DEVICE_TRACKING_ENABLED=false`.
+
+## Recording the device for debugging
+
+When one install misbehaves, "which phone and which OS" is usually the first question. The
+server stores three optional extra params on the install row and shows them in the **Devices**
+tab, next to the user id:
+
+| Extra param    | Source (`expo-device`) | Example       |
+| -------------- | ---------------------- | ------------- |
+| `os-version`   | `Device.osVersion`     | `17.5.1`      |
+| `device-brand` | `Device.brand`         | `Apple`       |
+| `device-model` | `Device.modelName`     | `iPhone 15 Pro` |
+
+Brand is always `Apple` on iOS, so send the model too — it is what tells iPhones apart.
+
+```js
+import * as Device from 'expo-device';
+import * as Updates from 'expo-updates';
+
+await Updates.setExtraParamAsync('os-version', Device.osVersion ?? '');
+await Updates.setExtraParamAsync('device-brand', Device.brand ?? '');
+await Updates.setExtraParamAsync('device-model', Device.modelName ?? '');
+```
+
+Call this on every launch: the OS version changes when the user upgrades, and the last value
+sent wins. A launch that omits a param keeps the previously stored value. Values are limited to
+64 printable ASCII characters; anything else is dropped rather than truncated. These facts are
+never used to decide which update a device is served.
 
 ## Failure behaviour
 

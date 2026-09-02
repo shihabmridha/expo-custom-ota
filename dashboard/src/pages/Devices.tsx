@@ -21,12 +21,27 @@ function shortId(value: string): string {
   return value.startsWith('user:') ? value : value.slice(0, 8);
 }
 
+/**
+ * "Apple iPhone15,2 · 17.5.1", or whichever parts the app chose to send. All
+ * three are optional extra params, so any subset — or none — is normal.
+ */
+function deviceLabel(row: {
+  deviceBrand: string | null;
+  deviceModel: string | null;
+  osVersion: string | null;
+}): string {
+  const hardware = [row.deviceBrand, row.deviceModel].filter(Boolean).join(' ');
+  return [hardware, row.osVersion].filter(Boolean).join(' · ') || '—';
+}
+
 export function DevicesPage() {
   const { id } = useParams<{ id: string }>();
 
   const [platform, setPlatform] = useState('');
   const [runtimeVersion, setRuntimeVersion] = useState('');
   const [userId, setUserId] = useState('');
+  const [osVersion, setOsVersion] = useState('');
+  const [deviceBrand, setDeviceBrand] = useState('');
   const [selectedUpdate, setSelectedUpdate] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
 
@@ -36,6 +51,8 @@ export function DevicesPage() {
     ...(platform ? { platform: platform as 'ios' | 'android' } : {}),
     ...(runtimeVersion ? { runtimeVersion } : {}),
     ...(userId ? { userId } : {}),
+    ...(osVersion ? { osVersion } : {}),
+    ...(deviceBrand ? { deviceBrand } : {}),
   };
 
   const adoption = useQuery({
@@ -164,6 +181,7 @@ export function DevicesPage() {
                 <tr>
                   <th className="pb-2 font-normal">Install</th>
                   <th className="pb-2 font-normal">User</th>
+                  <th className="pb-2 font-normal">Device</th>
                   <th className="pb-2 font-normal">Served</th>
                   <th className="pb-2 font-normal">Confirmed</th>
                   <th className="pb-2 font-normal">Still running</th>
@@ -177,6 +195,7 @@ export function DevicesPage() {
                   >
                     <td className="py-2 font-mono text-xs">{shortId(row.clientId)}</td>
                     <td className="py-2">{row.userId ?? '—'}</td>
+                    <td className="py-2 text-xs">{deviceLabel(row)}</td>
                     <td className="py-2 text-xs text-neutral-500">
                       {row.servedAt ? formatDate(row.servedAt) : '—'}
                     </td>
@@ -194,7 +213,9 @@ export function DevicesPage() {
 
       <Card className="space-y-3">
         <h2 className="font-medium">Installs</h2>
-        <div className="grid gap-2 sm:grid-cols-3">
+        {/* Every text filter is an exact match; the labels say so because a
+            partial id otherwise looks like "no installs". */}
+        <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
           <Field label="Platform">
             <Select
               value={platform}
@@ -208,7 +229,7 @@ export function DevicesPage() {
               <option value="ios">ios</option>
             </Select>
           </Field>
-          <Field label="Runtime version">
+          <Field label="Runtime version (exact)">
             <Input
               value={runtimeVersion}
               placeholder="any"
@@ -218,12 +239,32 @@ export function DevicesPage() {
               }}
             />
           </Field>
-          <Field label="User id">
+          <Field label="User id (exact)">
             <Input
               value={userId}
               placeholder="any"
               onChange={(e) => {
                 setUserId(e.target.value);
+                setOffset(0);
+              }}
+            />
+          </Field>
+          <Field label="Brand (exact)">
+            <Input
+              value={deviceBrand}
+              placeholder="any"
+              onChange={(e) => {
+                setDeviceBrand(e.target.value);
+                setOffset(0);
+              }}
+            />
+          </Field>
+          <Field label="OS version (exact)">
+            <Input
+              value={osVersion}
+              placeholder="any"
+              onChange={(e) => {
+                setOsVersion(e.target.value);
                 setOffset(0);
               }}
             />
@@ -242,6 +283,7 @@ export function DevicesPage() {
                 <th className="pb-2 font-normal">Keyed by</th>
                 <th className="pb-2 font-normal">User</th>
                 <th className="pb-2 font-normal">Platform</th>
+                <th className="pb-2 font-normal">Device</th>
                 <th className="pb-2 font-normal">Channel</th>
                 <th className="pb-2 font-normal">Runtime</th>
                 <th className="pb-2 font-normal">Running</th>
@@ -262,6 +304,7 @@ export function DevicesPage() {
                   </td>
                   <td className="py-2">{row.userId ?? '—'}</td>
                   <td className="py-2">{row.platform}</td>
+                  <td className="py-2 text-xs">{deviceLabel(row)}</td>
                   <td className="py-2">{row.channelName}</td>
                   <td className="py-2 font-mono text-xs">{row.runtimeVersion}</td>
                   <td className="py-2">

@@ -10,10 +10,18 @@ import { paginationQuerySchema, platformSchema } from './common.ts';
  */
 export const deviceClientIdSourceSchema = z.enum(['eas', 'extra', 'user']);
 
+/** App-supplied via `expo-extra-params`; any of them may be absent. */
+const deviceFactsSchema = {
+  osVersion: z.string().nullable(),
+  deviceBrand: z.string().nullable(),
+  deviceModel: z.string().nullable(),
+};
+
 export const deviceInstallSchema = z.object({
   clientId: z.string(),
   clientIdSource: deviceClientIdSourceSchema,
   userId: z.string().nullable(),
+  ...deviceFactsSchema,
   platform: platformSchema,
   channelName: z.string(),
   runtimeVersion: z.string(),
@@ -35,6 +43,9 @@ export const deviceListQuerySchema = paginationQuerySchema.extend({
   runtimeVersion: z.string().max(128).optional(),
   updateId: z.string().max(64).optional(),
   userId: z.string().max(128).optional(),
+  /** Exact matches, like every other filter here. */
+  osVersion: z.string().max(64).optional(),
+  deviceBrand: z.string().max(64).optional(),
   /** Only installs seen within the last N days. */
   activeWithinDays: z.coerce.number().int().min(1).max(365).optional(),
 });
@@ -83,6 +94,7 @@ export const deviceRecipientsSchema = z.object({
       clientId: z.string(),
       clientIdSource: deviceClientIdSourceSchema.nullable(),
       userId: z.string().nullable(),
+      ...deviceFactsSchema,
       platform: platformSchema,
       servedAt: z.string().nullable(),
       confirmedAt: z.string().nullable(),

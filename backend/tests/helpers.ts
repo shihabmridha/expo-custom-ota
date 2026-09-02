@@ -1,5 +1,6 @@
 import { Database } from 'bun:sqlite';
-import { readdirSync, readFileSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { OtaDatabase } from '@ota/db';
 import * as schema from '@ota/db/schema/index';
@@ -28,6 +29,19 @@ export const SIGNING_FIXTURES = join(
 );
 
 export const TEST_CERT_PEM = readFileSync(join(SIGNING_FIXTURES, 'test-cert.pem'), 'utf8');
+
+/**
+ * The app's private-key store, as a throwaway directory per test run.
+ *
+ * It must NOT be the fixtures directory: creating an application writes a
+ * freshly generated `<slug>-<keyId>.pem` into `SIGNING_KEYS_DIRECTORY`, and
+ * pointing that at `fixtures/signing` had every `bun test` run scribbling new
+ * random keys into the checked-in tree. Seeded applications reference
+ * `test-key.pem` relative to the store, so that one fixture is copied in.
+ */
+export const SIGNING_KEYS_DIR = mkdtempSync(join(tmpdir(), 'ota-test-keys-'));
+copyFileSync(join(SIGNING_FIXTURES, 'test-key.pem'), join(SIGNING_KEYS_DIR, 'test-key.pem'));
+process.on('exit', () => rmSync(SIGNING_KEYS_DIR, { recursive: true, force: true }));
 
 export function createMigratedDb(): OtaDatabase {
   const sqlite = new Database(':memory:');
@@ -88,7 +102,7 @@ export function createTestApp(
   const env = loadEnv({
     NODE_ENV: 'test',
     OTA_PUBLIC_URL: 'http://localhost:3000',
-    SIGNING_KEYS_DIRECTORY: SIGNING_FIXTURES,
+    SIGNING_KEYS_DIRECTORY: SIGNING_KEYS_DIR,
     LOG_LEVEL: 'error',
     ...envOverrides,
   });

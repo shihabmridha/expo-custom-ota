@@ -17,6 +17,10 @@ import {
   H_RECENT_FAILED_UPDATE_IDS,
   H_RUNTIME_VERSION,
   H_USER_ID,
+  P_DEVICE_BRAND,
+  P_DEVICE_MODEL,
+  P_OS_VERSION,
+  P_USER_ID,
   readHeader,
 } from './headers.ts';
 import { parseSfvDictionary, parseSfvStringDictionary, parseSfvStringList } from './sfv.ts';
@@ -41,13 +45,30 @@ export interface ExpoUpdateRequest {
    * value is null rather than something that would key a row.
    */
   easClientId: string | null;
-  /** App-supplied, opaque, absent unless the app sets `x-ota-user-id`. */
+  /**
+   * App-supplied, opaque. From the `x-ota-user-id` header, else the `user-id`
+   * extra param; absent unless the app sets one of them.
+   */
   userId: string | null;
+  /**
+   * Device facts from the `os-version` / `device-brand` / `device-model` extra
+   * params. Debugging aids only — never an input to update selection.
+   */
+  osVersion: string | null;
+  deviceBrand: string | null;
+  deviceModel: string | null;
   /** Normalised to lowercase — the client sends lowercased UUIDs. */
   currentUpdateId: string | null;
   embeddedUpdateId: string | null;
   recentFailedUpdateIds: string[];
   extraParams: Record<string, string>;
+  /**
+   * True when `expo-extra-params` was sent but yielded no usable entry — almost
+   * always a camelCase key, which RFC 8941 rejects and which takes the whole
+   * dictionary with it. Surfaced so the server can log it instead of the
+   * client's install-id or user-id silently never arriving.
+   */
+  extraParamsUnparsable: boolean;
   expectSignature: ExpectSignature | null;
   /** True when the client accepts `multipart/mixed`, which directives require. */
   acceptsMultipart: boolean;
@@ -75,6 +96,25 @@ export function sanitizeIdentifier(raw: string | null): string | null {
   if (raw === null) return null;
   if (raw.length > MAX_IDENTIFIER_LENGTH) return null;
   return IDENTIFIER_PATTERN.test(raw) ? raw : null;
+}
+
+/** "Pixel 8 Pro" is 11 characters; OS versions are shorter. Headroom, not a target. */
+const MAX_LABEL_LENGTH = 64;
+/** Printable ASCII *with* spaces: device names have them, identifiers do not. */
+const LABEL_PATTERN = /^[\x20-\x7e]+$/;
+
+/**
+ * Bound a free-text label such as a device model or OS version.
+ *
+ * Looser than `sanitizeIdentifier` (spaces are allowed) but shorter, and it
+ * still rejects rather than truncates so a stored value is always exactly what
+ * the device sent. Trims, and maps the empty string to null.
+ */
+export function sanitizeLabel(raw: string | null): string | null {
+  if (raw === null) return null;
+  const trimmed = raw.trim();
+  if (trimmed.length === 0 || trimmed.length > MAX_LABEL_LENGTH) return null;
+  return LABEL_PATTERN.test(trimmed) ? trimmed : null;
 }
 
 function parseAccept(raw: string | null): { multipart: boolean; json: boolean } {
@@ -172,6 +212,7 @@ export function parseExpoUpdateRequest(
   const parsedApiVersion = rawApiVersion === null ? Number.NaN : Number.parseInt(rawApiVersion, 10);
 
   const rawExtraParams = readHeader(headers, H_EXTRA_PARAMS);
+  const extraParams = rawExtraParams ? parseSfvStringDictionary(rawExtraParams) : {};
   const rawFailedIds = readHeader(headers, H_RECENT_FAILED_UPDATE_IDS);
 
   return ok({
@@ -181,11 +222,17 @@ export function parseExpoUpdateRequest(
     runtimeVersion,
     channelName: readHeader(headers, H_CHANNEL_NAME) ?? readHeader(headers, H_CHANNEL_NAME_LEGACY),
     easClientId: sanitizeIdentifier(readHeader(headers, H_EAS_CLIENT_ID)),
-    userId: sanitizeIdentifier(readHeader(headers, H_USER_ID)),
+    userId:
+      sanitizeIdentifier(readHeader(headers, H_USER_ID)) ??
+      sanitizeIdentifier(extraParams[P_USER_ID] ?? null),
+    osVersion: sanitizeLabel(extraParams[P_OS_VERSION] ?? null),
+    deviceBrand: sanitizeLabel(extraParams[P_DEVICE_BRAND] ?? null),
+    deviceModel: sanitizeLabel(extraParams[P_DEVICE_MODEL] ?? null),
     currentUpdateId: readHeader(headers, H_CURRENT_UPDATE_ID)?.toLowerCase() ?? null,
     embeddedUpdateId: readHeader(headers, H_EMBEDDED_UPDATE_ID)?.toLowerCase() ?? null,
     recentFailedUpdateIds: rawFailedIds ? parseSfvStringList(rawFailedIds) : [],
-    extraParams: rawExtraParams ? parseSfvStringDictionary(rawExtraParams) : {},
+    extraParams,
+    extraParamsUnparsable: rawExtraParams !== null && Object.keys(extraParams).length === 0,
     expectSignature: parseExpectSignature(readHeader(headers, H_EXPECT_SIGNATURE)),
     acceptsMultipart: accept.multipart,
     jsonError: readHeader(headers, H_JSON_ERROR) === 'true',

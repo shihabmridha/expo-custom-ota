@@ -90,6 +90,10 @@ updatesRoutes.all('/:updateKey', async (c) => {
     easClientId: request.easClientId,
   };
   logger.debug('update_requested', requestLog);
+  // The usual cause is a camelCase key, which silently drops the app's
+  // install-id / user-id / device facts. The header value is not logged: it is
+  // app-supplied and may carry the user id.
+  if (request.extraParamsUnparsable) logger.debug('extra_params_unparsable', requestLog);
 
   // Awaited rather than fire-and-forget: `bun:sqlite` is synchronous
   // underneath, so voiding the promise buys no real latency, and awaiting is

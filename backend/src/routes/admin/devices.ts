@@ -63,6 +63,7 @@ deviceRoutes.get('/applications/:id/device-adoption', async (c) => {
     .select({
       updateId: schema.deviceInstalls.currentUpdateId,
       n: sql<number>`count(*)`,
+      runtimeVersion: sql<string | null>`max(${schema.deviceInstalls.runtimeVersion})`,
     })
     .from(schema.deviceInstalls)
     .where(eq(schema.deviceInstalls.applicationId, applicationId))
@@ -81,11 +82,14 @@ deviceRoutes.get('/applications/:id/device-adoption', async (c) => {
 
   const variants = await releaseNumbersByUpdateId(db, applicationId);
 
-  const byUpdate = new Map<string, { running: number; served: number; confirmed: number }>();
+  const byUpdate = new Map<
+    string,
+    { running: number; served: number; confirmed: number; runtimeVersion: string | null }
+  >();
   const bucket = (updateId: string) => {
     const existing = byUpdate.get(updateId);
     if (existing) return existing;
-    const created = { running: 0, served: 0, confirmed: 0 };
+    const created = { running: 0, served: 0, confirmed: 0, runtimeVersion: null };
     byUpdate.set(updateId, created);
     return created;
   };
@@ -93,7 +97,11 @@ deviceRoutes.get('/applications/:id/device-adoption', async (c) => {
   for (const row of running) {
     // Installs that have never reported a current update id are real, but they
     // are not "on" any update, so they are not a row in this table.
-    if (row.updateId) bucket(row.updateId).running = Number(row.n);
+    if (row.updateId) {
+      const b = bucket(row.updateId);
+      b.running = Number(row.n);
+      b.runtimeVersion = row.runtimeVersion ?? null;
+    }
   }
   for (const row of funnel) {
     if (row.kind === 'served') bucket(row.updateId).served = Number(row.n);
@@ -110,12 +118,17 @@ deviceRoutes.get('/applications/:id/device-adoption', async (c) => {
     byUpdate: [...byUpdate.entries()]
       .map(([updateId, counts]) => {
         const variant = variants.get(updateId);
+        // Embedded bundles are never published, so they never appear in
+        // `release_variants` — fall back to the runtime version the installs
+        // themselves reported. Installs sharing an update id come from one
+        // build, so they agree on it.
+        const { runtimeVersion: reported, ...rest } = counts;
         return {
           updateId,
           releaseNumber: variant?.releaseNumber ?? null,
           platform: (variant?.platform ?? null) as 'ios' | 'android' | null,
-          runtimeVersion: variant?.runtimeVersion ?? null,
-          ...counts,
+          runtimeVersion: variant?.runtimeVersion ?? reported ?? null,
+          ...rest,
         };
       })
       // Highest release number first, unknown updates (embedded bundles) last.
@@ -137,6 +150,10 @@ deviceRoutes.get(
     }
     if (query.updateId) filters.push(eq(schema.deviceInstalls.currentUpdateId, query.updateId));
     if (query.userId) filters.push(eq(schema.deviceInstalls.userId, query.userId));
+    if (query.osVersion) filters.push(eq(schema.deviceInstalls.osVersion, query.osVersion));
+    if (query.deviceBrand) {
+      filters.push(eq(schema.deviceInstalls.deviceBrand, query.deviceBrand));
+    }
     if (query.activeWithinDays) {
       filters.push(
         gte(
@@ -167,6 +184,9 @@ deviceRoutes.get(
         clientId: r.clientId,
         clientIdSource: r.clientIdSource,
         userId: r.userId,
+        osVersion: r.osVersion,
+        deviceBrand: r.deviceBrand,
+        deviceModel: r.deviceModel,
         platform: r.platform,
         channelName: r.channelName,
         runtimeVersion: r.runtimeVersion,
@@ -228,12 +248,16 @@ deviceRoutes.get(
       .sort((a, b) => (b.servedAt ?? b.confirmedAt ?? 0) - (a.servedAt ?? a.confirmedAt ?? 0))
       .slice(query.offset, query.offset + query.limit);
 
-    // Only the page needs the install row, for the user id and "still running".
+    // Only the page needs the install row, for the user id, the device facts
+    // and "still running".
     const installRows = await db
       .select({
         clientId: schema.deviceInstalls.clientId,
         clientIdSource: schema.deviceInstalls.clientIdSource,
         userId: schema.deviceInstalls.userId,
+        osVersion: schema.deviceInstalls.osVersion,
+        deviceBrand: schema.deviceInstalls.deviceBrand,
+        deviceModel: schema.deviceInstalls.deviceModel,
         currentUpdateId: schema.deviceInstalls.currentUpdateId,
       })
       .from(schema.deviceInstalls)
@@ -250,6 +274,9 @@ deviceRoutes.get(
           clientId: row.clientId,
           clientIdSource: install?.clientIdSource ?? null,
           userId: install?.userId ?? null,
+          osVersion: install?.osVersion ?? null,
+          deviceBrand: install?.deviceBrand ?? null,
+          deviceModel: install?.deviceModel ?? null,
           platform: row.platform,
           servedAt: row.servedAt === null ? null : new Date(row.servedAt).toISOString(),
           confirmedAt: row.confirmedAt === null ? null : new Date(row.confirmedAt).toISOString(),

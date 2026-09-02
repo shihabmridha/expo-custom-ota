@@ -21,6 +21,9 @@ const EMAIL = 'admin@example.com';
 const PASSWORD = 'correct-horse-battery-staple';
 const DEVICE_A = 'aaaaaaaa-1111-4000-8000-000000000001';
 const DEVICE_B = 'bbbbbbbb-2222-4000-8000-000000000002';
+const DEVICE_C = 'cccccccc-3333-4000-8000-000000000003';
+/** An embedded bundle's update id — never published, so never in `release_variants`. */
+const EMBEDDED_UPDATE_ID = '11111111-1111-4111-8111-111111111111';
 
 beforeEach(async () => {
   db = createMigratedDb();
@@ -85,6 +88,29 @@ describe('device adoption endpoint', () => {
     expect(row!.served).toBe(2);
     // Only A came back and said it was running the update.
     expect(row!.confirmed).toBe(1);
+    expect(row!.running).toBe(1);
+  });
+
+  test('falls back to the reported runtime version for an embedded (unpublished) update', async () => {
+    const cookie = await login();
+    await device(
+      deviceHeaders(DEVICE_C, {
+        'expo-current-update-id': EMBEDDED_UPDATE_ID,
+        'expo-runtime-version': '2.0.0',
+      }),
+    );
+
+    const response = await admin(
+      `/api/admin/applications/${seeded.applicationId}/device-adoption`,
+      cookie,
+    );
+    expect(response.status).toBe(200);
+
+    const body = (await response.json()) as DeviceAdoption;
+    const row = body.byUpdate.find((r) => r.updateId === EMBEDDED_UPDATE_ID);
+    expect(row).toBeDefined();
+    expect(row!.releaseNumber).toBe(null);
+    expect(row!.runtimeVersion).toBe('2.0.0');
     expect(row!.running).toBe(1);
   });
 
@@ -158,6 +184,43 @@ describe('device list endpoint', () => {
     expect(byPlatform.total).toBe(0);
   });
 
+  test('returns and filters by device facts', async () => {
+    const cookie = await login();
+    await device(
+      deviceHeaders(DEVICE_A, {
+        'expo-extra-params': 'os-version="17.5.1", device-brand="Apple", device-model="iPhone15,2"',
+      }),
+    );
+    await device(
+      deviceHeaders(DEVICE_B, { 'expo-extra-params': 'os-version="14", device-brand="google"' }),
+    );
+
+    const all = await adminJson<DeviceList>(
+      `/api/admin/applications/${seeded.applicationId}/devices`,
+      cookie,
+    );
+    const a = all.items.find((i) => i.clientId === DEVICE_A);
+    expect(a!.osVersion).toBe('17.5.1');
+    expect(a!.deviceBrand).toBe('Apple');
+    expect(a!.deviceModel).toBe('iPhone15,2');
+    const b = all.items.find((i) => i.clientId === DEVICE_B);
+    expect(b!.deviceModel).toBeNull();
+
+    const google = await adminJson<DeviceList>(
+      `/api/admin/applications/${seeded.applicationId}/devices?deviceBrand=google`,
+      cookie,
+    );
+    expect(google.total).toBe(1);
+    expect(google.items[0]!.clientId).toBe(DEVICE_B);
+
+    const ios17 = await adminJson<DeviceList>(
+      `/api/admin/applications/${seeded.applicationId}/devices?osVersion=17.5.1`,
+      cookie,
+    );
+    expect(ios17.total).toBe(1);
+    expect(ios17.items[0]!.clientId).toBe(DEVICE_A);
+  });
+
   test('paginates', async () => {
     const cookie = await login();
     await scenario();
@@ -214,6 +277,25 @@ describe('update recipients endpoint', () => {
     expect(b!.confirmedAt).toBeNull();
     expect(b!.stillRunning).toBe(false);
     expect(b!.userId).toBe('user_b');
+  });
+
+  test('carries the device facts of each recipient', async () => {
+    const cookie = await login();
+    // Facts sent once, before the scenario's requests, which omit them: the
+    // recipients view has to see the sticky values, not the latest poll's nulls.
+    await device(
+      deviceHeaders(DEVICE_A, { 'expo-extra-params': 'device-brand="Apple", os-version="17.5.1"' }),
+    );
+    await scenario();
+
+    const body = await adminJson<DeviceRecipients>(
+      `/api/admin/applications/${seeded.applicationId}/updates/${seeded.updateId}/devices`,
+      cookie,
+    );
+    const a = body.items.find((i) => i.clientId === DEVICE_A);
+    expect(a!.deviceBrand).toBe('Apple');
+    expect(a!.osVersion).toBe('17.5.1');
+    expect(a!.deviceModel).toBeNull();
   });
 
   test('kind=confirmed narrows to installs that actually launched it', async () => {

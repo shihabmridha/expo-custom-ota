@@ -275,3 +275,87 @@ describe('install and user identifiers', () => {
     expect(result.ok && result.value.easClientId).toBe(exact);
   });
 });
+
+describe('extra params: user id and device facts', () => {
+  const facts = 'os-version="17.5.1", device-brand="Apple", device-model="iPhone15,2"';
+
+  test('captures os-version, device-brand and device-model', () => {
+    const result = parse(realClientHeaders({ 'expo-extra-params': facts }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.osVersion).toBe('17.5.1');
+    expect(result.value.deviceBrand).toBe('Apple');
+    expect(result.value.deviceModel).toBe('iPhone15,2');
+    expect(result.value.extraParamsUnparsable).toBe(false);
+  });
+
+  test('device facts are null when absent', () => {
+    const result = parse(realClientHeaders());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.osVersion).toBeNull();
+    expect(result.value.deviceBrand).toBeNull();
+    expect(result.value.deviceModel).toBeNull();
+    expect(result.value.extraParamsUnparsable).toBe(false);
+  });
+
+  test('a label may contain spaces where an identifier may not', () => {
+    const result = parse(
+      realClientHeaders({
+        'expo-extra-params': 'device-model="Pixel 8 Pro", device-brand="google"',
+      }),
+    );
+    expect(result.ok && result.value.deviceModel).toBe('Pixel 8 Pro');
+  });
+
+  test('labels are trimmed, and an empty label is null', () => {
+    const result = parse(
+      realClientHeaders({ 'expo-extra-params': 'device-model="  Pixel 8  ", os-version="   "' }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.deviceModel).toBe('Pixel 8');
+    expect(result.value.osVersion).toBeNull();
+  });
+
+  test('rejects an over-long or non-printable label rather than truncating it', () => {
+    const long = 'x'.repeat(65);
+    const result = parse(
+      realClientHeaders({ 'expo-extra-params': `device-model="${long}", os-version="1\u00e9"` }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.deviceModel).toBeNull();
+    expect(result.value.osVersion).toBeNull();
+  });
+
+  test('user-id extra param populates userId when the header is absent', () => {
+    const result = parse(realClientHeaders({ 'expo-extra-params': 'user-id="usr_9"' }));
+    expect(result.ok && result.value.userId).toBe('usr_9');
+  });
+
+  test('the x-ota-user-id header wins over the user-id extra param', () => {
+    const result = parse(
+      realClientHeaders({
+        'x-ota-user-id': 'from_header',
+        'expo-extra-params': 'user-id="from_param"',
+      }),
+    );
+    expect(result.ok && result.value.userId).toBe('from_header');
+  });
+
+  test('a camelCase key sinks the whole dictionary and is flagged', () => {
+    // RFC 8941 keys are lowercase by grammar. This is what happens to anyone
+    // who writes `setExtraParamAsync('userId', ...)`: not just that pair but
+    // every pair beside it is lost.
+    const result = parse(
+      realClientHeaders({ 'expo-extra-params': 'userId="usr_9", os-version="17.5.1"' }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.extraParams).toEqual({});
+    expect(result.value.userId).toBeNull();
+    expect(result.value.osVersion).toBeNull();
+    expect(result.value.extraParamsUnparsable).toBe(true);
+  });
+});

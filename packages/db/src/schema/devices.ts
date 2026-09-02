@@ -43,6 +43,16 @@ export const deviceInstalls = sqliteTable(
     /** Application-supplied, opaque, may be absent. Never required. */
     userId: text('user_id'),
 
+    /**
+     * Device facts the app chose to send via `expo-extra-params` (D18). For a
+     * human debugging one install, not for selection — nothing in the update
+     * path may read them. Sticky on upsert like `user_id`: a poll that omits
+     * them keeps the last known value.
+     */
+    osVersion: text('os_version'),
+    deviceBrand: text('device_brand'),
+    deviceModel: text('device_model'),
+
     platform: text('platform', { enum: PLATFORMS }).notNull(),
     channelName: text('channel_name').notNull(),
     runtimeVersion: text('runtime_version').notNull(),
