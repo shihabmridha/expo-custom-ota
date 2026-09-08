@@ -114,6 +114,17 @@ describe('device install state', () => {
     expect((await installs())[0]?.userId).toBe('user_42');
   });
 
+  test('a different user id on the same install replaces the stored one', async () => {
+    // Log out, someone else logs in: the install row is keyed by eas-client-id,
+    // so it is the same row and the sticky coalesce takes the new non-null value.
+    await get(clientHeaders({ 'x-ota-user-id': 'user_42' }));
+    await get(clientHeaders({ 'x-ota-user-id': 'user_43' }));
+
+    const rows = await installs();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.userId).toBe('user_43');
+  });
+
   test('last_served_update_id is set on serve and preserved across later polls', async () => {
     await get(clientHeaders());
     expect((await installs())[0]?.lastServedUpdateId).toBe(seeded.updateId);
@@ -287,5 +298,58 @@ describe('tracking never breaks delivery', () => {
     expect(response.status).toBe(200);
     expect(await installs()).toHaveLength(0);
     expect(await events()).toHaveLength(0);
+  });
+});
+
+describe('device facts', () => {
+  const facts = 'os-version="14", device-brand="google", device-model="Pixel 8 Pro"';
+
+  test('stores os version, brand and model from extra params', async () => {
+    await get(clientHeaders({ 'expo-extra-params': facts }));
+
+    const row = (await installs())[0];
+    expect(row?.osVersion).toBe('14');
+    expect(row?.deviceBrand).toBe('google');
+    expect(row?.deviceModel).toBe('Pixel 8 Pro');
+  });
+
+  test('a later request without the params keeps the facts already captured', async () => {
+    await get(clientHeaders({ 'expo-extra-params': facts }));
+    await get(clientHeaders());
+
+    const row = (await installs())[0];
+    expect(row?.osVersion).toBe('14');
+    expect(row?.deviceBrand).toBe('google');
+    expect(row?.deviceModel).toBe('Pixel 8 Pro');
+  });
+
+  test('a changed os version overwrites the stored one', async () => {
+    await get(clientHeaders({ 'expo-extra-params': facts }));
+    await get(clientHeaders({ 'expo-extra-params': 'os-version="15"' }));
+
+    const row = (await installs())[0];
+    expect(row?.osVersion).toBe('15');
+    expect(row?.deviceBrand).toBe('google');
+  });
+
+  test('an over-long label is stored as null rather than truncated', async () => {
+    await get(clientHeaders({ 'expo-extra-params': `device-model="${'m'.repeat(65)}"` }));
+    expect((await installs())[0]?.deviceModel).toBeNull();
+  });
+
+  test('the user-id extra param is stored alongside an eas-keyed install', async () => {
+    await get(clientHeaders({ 'expo-extra-params': 'user-id="usr_extra"' }));
+
+    const row = (await installs())[0];
+    expect(row?.clientIdSource).toBe('eas');
+    expect(row?.userId).toBe('usr_extra');
+  });
+
+  test('the user-id extra param is the identity of last resort, like the header', async () => {
+    await get(clientHeaders({ 'eas-client-id': null, 'expo-extra-params': 'user-id="usr_only"' }));
+
+    const row = (await installs())[0];
+    expect(row?.clientId).toBe('user:usr_only');
+    expect(row?.clientIdSource).toBe('user');
   });
 });

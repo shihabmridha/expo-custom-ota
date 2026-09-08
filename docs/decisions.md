@@ -362,3 +362,35 @@ removed from the repo in 6954f00 — recover it with `git show 6954f00^:expo-oat
    read-only observability, and `selectUpdate` neither reads them nor ever may. Tracking answers
    "who received update X"; targeting would change *what* a device is served, and remains a
    non-goal.
+
+## D18 — Device facts ride `expo-extra-params` and live on `device_installs`
+
+`os-version`, `device-brand` and `device-model` are optional extra params an app sets with
+`Updates.setExtraParamAsync` from `expo-device`. They are stored as three nullable columns on
+`device_installs`, shown in the Devices tab, and filterable by exact match.
+
+**Why extra params, not `requestHeaders`.** `updates.requestHeaders` is baked into the binary,
+and the OS version changes underneath it. Extra params are runtime-settable, persisted by the
+client library, and already the transport for `install-id`, so a client integrating one
+integrates all of them the same way.
+
+**Why the install table, not the event log.** `device_update_events` is the bounded append-only
+funnel and stays narrow. A debugging session joins events to installs by client id anyway, and
+brand does not change per event. Write semantics copy `user_id`: `coalesce(excluded, existing)`,
+so an omitted param keeps the last known value and a changed one overwrites it. No new indexes —
+this is a per-install lookup aid, not the headline query.
+
+**A looser sanitiser.** `sanitizeIdentifier` forbids spaces, which rejects "Pixel 8 Pro".
+`sanitizeLabel` allows printable ASCII including space, caps at 64 characters, and still rejects
+rather than truncates so a stored value is always exactly what the device sent.
+
+**The user-id transport was broken, and is fixed alongside.** `docs/client-setup.md` documented
+`setExtraParamAsync('userId', …)`, but the server read the user id only from the `x-ota-user-id`
+header, and a camelCase key fails RFC 8941 parsing and drops the *whole* dictionary — including
+any `install-id` beside it. The parser now also accepts a `user-id` extra param (header wins), the
+docs use that key, and a request whose `expo-extra-params` parses to nothing logs
+`extra_params_unparsable` at debug level without the header value, so the failure is no longer
+silent. Extra-param key constants live in `packages/protocol/src/headers.ts`.
+
+**The D16 line holds.** Nothing in `selectUpdate` or the update path reads these columns. They
+are app-supplied like the user id, so they are kept out of logs the same way (`CLAUDE.md`).

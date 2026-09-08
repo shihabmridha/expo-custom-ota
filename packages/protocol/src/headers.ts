@@ -38,13 +38,35 @@ export const H_CHANNEL_NAME_LEGACY = 'x-ota-channel';
  * Application-supplied user identifier. Like the channel this is not a protocol
  * header — it travels through the generic `updates.requestHeaders` config, so
  * its value is baked into the binary at build time. An id only known after
- * login must instead be set at runtime with `Updates.setExtraParamAsync`, which
- * arrives in `expo-extra-params`.
+ * login must instead be set at runtime with `Updates.setExtraParamAsync` under
+ * the `P_USER_ID` key, which arrives in `expo-extra-params`. The header wins
+ * when both are present.
  *
  * Whatever the app sends is stored verbatim and shown in the dashboard. Send an
  * opaque id, never an email address. See D16 in `docs/decisions.md`.
  */
 export const H_USER_ID = 'x-ota-user-id';
+
+// --- Extra params ----------------------------------------------------------
+//
+// Keys inside `expo-extra-params`, set at runtime with
+// `Updates.setExtraParamAsync`. All lowercase because they have to be: the
+// header is an RFC 8941 dictionary, whose keys are lowercase by grammar. A
+// camelCase key does not merely look wrong — the whole dictionary fails to
+// parse and every pair in it vanishes.
+
+/** Runtime alternative to `H_USER_ID`. */
+export const P_USER_ID = 'user-id';
+/** Install id fallback when the client sends no `eas-client-id` (D16). */
+export const P_INSTALL_ID = 'install-id';
+/**
+ * Device facts for debugging a misbehaving install: OS version, brand, model.
+ * Sourced from `expo-device` on the client. Stored on `device_installs`, shown
+ * in the dashboard, never read by update selection. See D18.
+ */
+export const P_OS_VERSION = 'os-version';
+export const P_DEVICE_BRAND = 'device-brand';
+export const P_DEVICE_MODEL = 'device-model';
 
 /** RFC 3229 delta encoding. We never implement it — ignore and return a full 200. */
 export const H_A_IM = 'a-im';

@@ -1,6 +1,6 @@
 import type { OtaDatabase } from '@ota/db';
 import { deviceInstalls, deviceUpdateEvents } from '@ota/db';
-import { type ExpoUpdateRequest, sanitizeIdentifier } from '@ota/protocol';
+import { type ExpoUpdateRequest, P_INSTALL_ID, sanitizeIdentifier } from '@ota/protocol';
 import type { DeviceClientIdSource } from '@ota/types';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Logger } from '../lib/logger.ts';
@@ -54,15 +54,16 @@ export interface DeviceIdentity {
  * that silently never fires. `install-id` is the form to document; `installid`
  * is accepted for anyone who writes it closed-up.
  */
-const INSTALL_ID_PARAM_KEYS = ['install-id', 'installid'] as const;
+const INSTALL_ID_PARAM_KEYS = [P_INSTALL_ID, 'installid'] as const;
 
 /**
  * Resolve who is asking, most specific first.
  *
  * `eas-client-id` is sent by every real `expo-updates` client and is per
- * install. `expo-extra-params.installId` is the runtime-settable fallback an app
+ * install. The `install-id` extra param is the runtime-settable fallback an app
  * can populate with `Updates.setExtraParamAsync` when tier 1 is unavailable.
- * `x-ota-user-id` is the last resort and is deliberately coarse: it keys one row
+ * The user id (`x-ota-user-id` header or `user-id` extra param — the parser has
+ * already merged them) is the last resort and is deliberately coarse: it keys one row
  * per *user*, collapsing their devices, which is why it ranks below the others
  * rather than beside them. `clientIdSource` records which tier won so the
  * dashboard can label the row honestly.
@@ -121,6 +122,9 @@ export async function recordDeviceUpdate(
         clientId: identity.clientId,
         clientIdSource: identity.source,
         userId: request.userId,
+        osVersion: request.osVersion,
+        deviceBrand: request.deviceBrand,
+        deviceModel: request.deviceModel,
         platform: request.platform,
         channelName: input.channelName,
         runtimeVersion: request.runtimeVersion,
@@ -154,6 +158,9 @@ export async function recordDeviceUpdate(
           // known value rather than nulling out a fact we already learned.
           embeddedUpdateId: sql`coalesce(excluded.embedded_update_id, ${deviceInstalls.embeddedUpdateId})`,
           userId: sql`coalesce(excluded.user_id, ${deviceInstalls.userId})`,
+          osVersion: sql`coalesce(excluded.os_version, ${deviceInstalls.osVersion})`,
+          deviceBrand: sql`coalesce(excluded.device_brand, ${deviceInstalls.deviceBrand})`,
+          deviceModel: sql`coalesce(excluded.device_model, ${deviceInstalls.deviceModel})`,
           lastServedUpdateId: sql`coalesce(excluded.last_served_update_id, ${deviceInstalls.lastServedUpdateId})`,
           lastServedAt: sql`coalesce(excluded.last_served_at, ${deviceInstalls.lastServedAt})`,
           lastSeenAt: sql`excluded.last_seen_at`,
