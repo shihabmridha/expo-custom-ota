@@ -43,15 +43,14 @@ exists so `admin:create` can run before the first boot.)
 3. From your Expo project, publish:
 
    ```bash
-   npm install --save-dev @shihabmridha/expo-custom-ota   # needs a GitHub Packages token — see below
+   npm install --save-dev expo-custom-ota
    npx expo-custom-ota publish \
      --server http://localhost:3000 --app <application-uuid> --channel production \
      --email you@example.com --password 'a-long-password'
    ```
 
-   The CLI is on GitHub Packages, which requires a `read:packages` token even for public
-   packages — [packages/cli/README.md](packages/cli/README.md) has the two-minute token
-   setup. No CLI? `npx expo-custom-ota pack` + **Releases → Upload** in the dashboard does
+   See [packages/cli/README.md](packages/cli/README.md) for CLI installation and usage.
+   Alternatively, `npx expo-custom-ota pack` + **Releases → Upload** in the dashboard does
    the same thing, and the **Simulator** tab shows exactly what a device would receive.
 
 ## Production

@@ -1,5 +1,5 @@
 {
-  "name": "@shihabmridha/expo-custom-ota",
+  "name": "expo-custom-ota",
   "version": "0.1.2",
   "description": "CLI tool for packaging and publishing Expo custom OTA updates",
   "type": "module",
@@ -18,12 +18,13 @@
     "directory": "packages/cli"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
+    "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "bun build src/cli.ts --target=node --format=esm --outdir=dist"
+    "build": "bun build src/cli.ts --target=node --format=esm --outdir=dist",
+    "prepack": "bun run build"
   },
   "devDependencies": {
     "@ota/api-sdk": "workspace:*",
