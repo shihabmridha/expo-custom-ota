@@ -5,6 +5,7 @@ import { Hono } from 'hono';
 import type { AppEnv } from './app-env.ts';
 import type { Env } from './config/env.ts';
 import { createLogger, type Logger } from './lib/logger.ts';
+import { TrackingDiagnostics } from './lib/tracking-diagnostics.ts';
 import { originCheck, requireAdmin } from './middleware/admin.ts';
 import { serveSpa } from './middleware/spa.ts';
 import { applicationRoutes } from './routes/admin/applications.ts';
@@ -43,6 +44,7 @@ export function createApp(deps: AppDependencies) {
   const signing = new SigningService(deps.db, deps.env.signingKeysDirAbsolute);
 
   const app = new Hono<AppEnv>();
+  const trackingDiagnostics = new TrackingDiagnostics(logger);
 
   const allowedOrigins = [deps.env.OTA_PUBLIC_URL];
 
@@ -51,6 +53,7 @@ export function createApp(deps: AppDependencies) {
     c.set('requestId', requestId);
     c.set('env', deps.env);
     c.set('db', deps.db);
+    c.set('trackingDiagnostics', trackingDiagnostics);
     c.set('storage', deps.storage);
     c.set('signing', signing);
     c.set('logger', logger.child({ requestId }));

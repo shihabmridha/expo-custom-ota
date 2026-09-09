@@ -1,8 +1,9 @@
 import { contracts } from '@ota/contracts';
 import * as schema from '@ota/db/schema/index';
-import { and, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import type { AppEnv } from '../../app-env.ts';
+import { getDeviceMetrics } from '../../services/device-metrics.ts';
 import { handle } from './validate.ts';
 
 /**
@@ -16,6 +17,21 @@ import { handle } from './validate.ts';
  * below are complete.
  */
 export const deviceRoutes = new Hono<AppEnv>();
+
+deviceRoutes.get(
+  '/applications/:id/device-metrics',
+  handle(contracts.devices.metrics, async (c, { query }) => {
+    return c.json(
+      await getDeviceMetrics(
+        c.var.db,
+        c.req.param('id')!,
+        query,
+        c.var.env.DEVICE_TRACKING_ENABLED,
+        c.var.env.DEVICE_TRACKING_RETENTION_DAYS,
+      ),
+    );
+  }),
+);
 
 const DAY_MS = 86_400_000;
 
@@ -218,16 +234,22 @@ deviceRoutes.get(
 
     // Pivot the event log to one row per install: an install appears once with
     // both halves of its funnel, rather than twice.
-    const pivoted = await db
+    const pivoted = db
       .select({
         clientId: schema.deviceUpdateEvents.clientId,
-        platform: sql<'ios' | 'android'>`max(${schema.deviceUpdateEvents.platform})`,
+        platform: sql<'ios' | 'android'>`max(${schema.deviceUpdateEvents.platform})`.as(
+          'recipient_platform',
+        ),
         servedAt: sql<
           number | null
-        >`max(case when ${schema.deviceUpdateEvents.kind} = 'served' then ${schema.deviceUpdateEvents.createdAt} end)`,
+        >`max(case when ${schema.deviceUpdateEvents.kind} = 'served' then ${schema.deviceUpdateEvents.createdAt} end)`.as(
+          'served_at',
+        ),
         confirmedAt: sql<
           number | null
-        >`max(case when ${schema.deviceUpdateEvents.kind} = 'confirmed' then ${schema.deviceUpdateEvents.createdAt} end)`,
+        >`max(case when ${schema.deviceUpdateEvents.kind} = 'confirmed' then ${schema.deviceUpdateEvents.createdAt} end)`.as(
+          'confirmed_at',
+        ),
       })
       .from(schema.deviceUpdateEvents)
       .where(
@@ -236,38 +258,65 @@ deviceRoutes.get(
           eq(schema.deviceUpdateEvents.updateId, updateId),
         ),
       )
-      .groupBy(schema.deviceUpdateEvents.clientId);
+      .groupBy(schema.deviceUpdateEvents.clientId)
+      .as('recipients');
 
-    const matching = pivoted.filter((row) => {
-      if (query.kind === 'served') return row.servedAt !== null;
-      if (query.kind === 'confirmed') return row.confirmedAt !== null;
-      return true;
-    });
-
-    const page = matching
-      .sort((a, b) => (b.servedAt ?? b.confirmedAt ?? 0) - (a.servedAt ?? a.confirmedAt ?? 0))
-      .slice(query.offset, query.offset + query.limit);
+    const kindFilter =
+      query.kind === 'served'
+        ? isNotNull(pivoted.servedAt)
+        : query.kind === 'confirmed'
+          ? isNotNull(pivoted.confirmedAt)
+          : undefined;
+    const [counts] = await db
+      .select({
+        served: sql<number>`count(${pivoted.servedAt})`,
+        confirmed: sql<number>`count(${pivoted.confirmedAt})`,
+      })
+      .from(pivoted);
+    const [total] = await db.select({ n: sql<number>`count(*)` }).from(pivoted).where(kindFilter);
+    const page = await db
+      .select()
+      .from(pivoted)
+      .where(kindFilter)
+      .orderBy(
+        desc(sql`coalesce(${pivoted.servedAt}, ${pivoted.confirmedAt}, 0)`),
+        asc(pivoted.clientId),
+      )
+      .limit(query.limit)
+      .offset(query.offset);
 
     // Only the page needs the install row, for the user id, the device facts
     // and "still running".
-    const installRows = await db
-      .select({
-        clientId: schema.deviceInstalls.clientId,
-        clientIdSource: schema.deviceInstalls.clientIdSource,
-        userId: schema.deviceInstalls.userId,
-        osVersion: schema.deviceInstalls.osVersion,
-        deviceBrand: schema.deviceInstalls.deviceBrand,
-        deviceModel: schema.deviceInstalls.deviceModel,
-        currentUpdateId: schema.deviceInstalls.currentUpdateId,
-      })
-      .from(schema.deviceInstalls)
-      .where(eq(schema.deviceInstalls.applicationId, applicationId));
+    const installRows =
+      page.length === 0
+        ? []
+        : await db
+            .select({
+              clientId: schema.deviceInstalls.clientId,
+              clientIdSource: schema.deviceInstalls.clientIdSource,
+              userId: schema.deviceInstalls.userId,
+              osVersion: schema.deviceInstalls.osVersion,
+              deviceBrand: schema.deviceInstalls.deviceBrand,
+              deviceModel: schema.deviceInstalls.deviceModel,
+              currentUpdateId: schema.deviceInstalls.currentUpdateId,
+              lastSeenAt: schema.deviceInstalls.lastSeenAt,
+            })
+            .from(schema.deviceInstalls)
+            .where(
+              and(
+                eq(schema.deviceInstalls.applicationId, applicationId),
+                inArray(
+                  schema.deviceInstalls.clientId,
+                  page.map((r) => r.clientId),
+                ),
+              ),
+            );
     const byClient = new Map(installRows.map((r) => [r.clientId, r]));
 
     return c.json({
       updateId,
-      served: pivoted.filter((r) => r.servedAt !== null).length,
-      confirmed: pivoted.filter((r) => r.confirmedAt !== null).length,
+      served: Number(counts?.served ?? 0),
+      confirmed: Number(counts?.confirmed ?? 0),
       items: page.map((row) => {
         const install = byClient.get(row.clientId);
         return {
@@ -281,9 +330,10 @@ deviceRoutes.get(
           servedAt: row.servedAt === null ? null : new Date(row.servedAt).toISOString(),
           confirmedAt: row.confirmedAt === null ? null : new Date(row.confirmedAt).toISOString(),
           stillRunning: install?.currentUpdateId === updateId,
+          lastSeenAt: install?.lastSeenAt.toISOString() ?? null,
         };
       }),
-      total: matching.length,
+      total: Number(total?.n ?? 0),
       limit: query.limit,
       offset: query.offset,
     });

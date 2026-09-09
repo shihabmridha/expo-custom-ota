@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import type { DeviceAdoption, DeviceList, DeviceRecipients } from '@ota/contracts';
+import { deviceMetricsSchema } from '@ota/contracts';
 import type { OtaDatabase } from '@ota/db';
+import { deviceInstalls, deviceUpdateEvents } from '@ota/db';
+import { eq } from 'drizzle-orm';
 import { createAdmin } from '../src/services/auth.ts';
 import {
   clientHeaders,
@@ -378,4 +381,65 @@ describe('application scoping', () => {
     expect(first.total).toBe(1);
     expect(second.total).toBe(1);
   });
+});
+
+describe('active device metrics', () => {
+  test('validates filters and returns the typed metrics response', async () => {
+    const cookie = await login();
+    await scenario();
+    const path = `/api/admin/applications/${seeded.applicationId}/device-metrics`;
+    expect((await admin(path, '')).status).toBe(401);
+    for (const query of [
+      'activeWithinDays=2',
+      'activeWithinDays=0',
+      'activeWithinDays=Infinity',
+      'platform=windows',
+    ]) {
+      expect((await admin(`${path}?${query}`, cookie)).status).toBe(422);
+    }
+    const response = await admin(path, cookie);
+    expect(response.status).toBe(200);
+    const body = deviceMetricsSchema.parse(await response.json());
+    expect(body.groups[0]).toMatchObject({
+      activeEligible: 2,
+      activeOnTarget: 1,
+      adoptionPercent: 50,
+    });
+    expect(body.activeWithinDays).toBe(7);
+    expect(body.retentionDays).toBe(90);
+    app = createTestApp(db, storage, { DEVICE_TRACKING_ENABLED: 'false' }).app;
+    expect(
+      deviceMetricsSchema.parse(await (await admin(path, cookie)).json()).trackingEnabled,
+    ).toBe(false);
+  });
+});
+
+test('recipient pages have stable ties and retain events after install pruning', async () => {
+  const cookie = await login();
+  await scenario();
+  await device(deviceHeaders(DEVICE_C));
+  const timestamp = new Date('2026-01-01');
+  await db.update(deviceUpdateEvents).set({ createdAt: timestamp });
+  await db.delete(deviceInstalls).where(eq(deviceInstalls.clientId, DEVICE_A));
+  const other = await seedApplication(db, storage, { slug: 'other-page', updateKey: 'other-page' });
+  await db.insert(deviceUpdateEvents).values({
+    applicationId: other.applicationId,
+    clientId: DEVICE_A,
+    updateId: seeded.updateId,
+    kind: 'served',
+    platform: 'android',
+    createdAt: timestamp,
+  });
+  const path = `/api/admin/applications/${seeded.applicationId}/updates/${seeded.updateId}/devices`;
+  const pages: DeviceRecipients[] = [];
+  for (let offset = 0; offset < 4; offset++) {
+    pages.push(await adminJson<DeviceRecipients>(`${path}?limit=1&offset=${offset}`, cookie));
+  }
+  expect(pages.map((p) => p.items[0]?.clientId)).toEqual([DEVICE_A, DEVICE_B, DEVICE_C, undefined]);
+  expect(pages[0]).toMatchObject({ served: 3, confirmed: 1, total: 3 });
+  expect(pages[0]?.items[0]).toMatchObject({ lastSeenAt: null, clientIdSource: null });
+  expect(pages[1]?.items[0]?.lastSeenAt).not.toBeNull();
+  const confirmed = await adminJson<DeviceRecipients>(`${path}?kind=confirmed&limit=1`, cookie);
+  expect(confirmed).toMatchObject({ served: 3, confirmed: 1, total: 1 });
+  expect(confirmed.items[0]?.clientId).toBe(DEVICE_A);
 });

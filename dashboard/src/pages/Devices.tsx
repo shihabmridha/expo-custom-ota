@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useParams } from 'react-router';
+import { DeviceMetricsPanel } from '../components/DeviceMetrics.tsx';
 import {
   Badge,
   Card,
@@ -37,6 +38,9 @@ function deviceLabel(row: {
 export function DevicesPage() {
   const { id } = useParams<{ id: string }>();
 
+  const [channel, setChannel] = useState('');
+  const [activeWithinDays, setActiveWithinDays] = useState(7);
+  const [recipientOffset, setRecipientOffset] = useState(0);
   const [platform, setPlatform] = useState('');
   const [runtimeVersion, setRuntimeVersion] = useState('');
   const [userId, setUserId] = useState('');
@@ -45,7 +49,18 @@ export function DevicesPage() {
   const [selectedUpdate, setSelectedUpdate] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
 
+  const metricFilters = {
+    activeWithinDays,
+    ...(channel ? { channel } : {}),
+    ...(platform ? { platform: platform as 'ios' | 'android' } : {}),
+    ...(runtimeVersion ? { runtimeVersion } : {}),
+  };
+  const metrics = useQuery({
+    queryKey: qk.deviceMetrics(id!, metricFilters),
+    queryFn: () => api.devices.metrics({ params: { id: id! }, query: metricFilters }),
+  });
   const filters = {
+    ...metricFilters,
     limit: PAGE_SIZE,
     offset,
     ...(platform ? { platform: platform as 'ios' | 'android' } : {}),
@@ -64,16 +79,16 @@ export function DevicesPage() {
     queryFn: () => api.devices.list({ params: { id: id! }, query: filters }),
   });
   const recipients = useQuery({
-    queryKey: qk.deviceRecipients(id!, selectedUpdate ?? ''),
+    queryKey: qk.deviceRecipients(id!, selectedUpdate ?? '', recipientOffset),
     queryFn: () =>
       api.devices.recipients({
         params: { id: id!, updateId: selectedUpdate! },
-        query: { kind: 'any', limit: PAGE_SIZE, offset: 0 },
+        query: { kind: 'any', limit: PAGE_SIZE, offset: recipientOffset },
       }),
     enabled: selectedUpdate !== null,
   });
 
-  if (adoption.data && !adoption.data.trackingEnabled) {
+  if (metrics.data && !metrics.data.trackingEnabled) {
     return (
       <div className="space-y-6">
         <PageHeader title="Devices" />
@@ -85,36 +100,89 @@ export function DevicesPage() {
     );
   }
 
-  const totals = adoption.data?.totals;
-
   return (
     <div className="space-y-6">
       <PageHeader title="Devices" />
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card>
-          <p className="text-xs text-neutral-500">Installs</p>
-          <p className="text-2xl">{totals?.installs ?? '—'}</p>
-        </Card>
-        <Card>
-          <p className="text-xs text-neutral-500">Active last 24h</p>
-          <p className="text-2xl">{totals?.activeLast24h ?? '—'}</p>
-        </Card>
-        <Card>
-          <p className="text-xs text-neutral-500">Active last 7d</p>
-          <p className="text-2xl">{totals?.activeLast7d ?? '—'}</p>
-        </Card>
-      </div>
+      <Card>
+        <h2 className="mb-3 font-medium">Metric and install filters</h2>
+        <div className="grid gap-3 sm:grid-cols-4">
+          <Field label="Channel (exact)">
+            <Input
+              value={channel}
+              placeholder="any"
+              onChange={(e) => {
+                setChannel(e.target.value);
+                setOffset(0);
+              }}
+            />
+          </Field>
+          <Field label="Platform">
+            <Select
+              value={platform}
+              onChange={(e) => {
+                setPlatform(e.target.value);
+                setOffset(0);
+              }}
+            >
+              <option value="">any</option>
+              <option value="ios">ios</option>
+              <option value="android">android</option>
+            </Select>
+          </Field>
+          <Field label="Runtime (exact)">
+            <Input
+              value={runtimeVersion}
+              placeholder="any"
+              onChange={(e) => {
+                setRuntimeVersion(e.target.value);
+                setOffset(0);
+              }}
+            />
+          </Field>
+          <Field label="Adoption and list activity window">
+            <Select
+              value={activeWithinDays}
+              onChange={(e) => {
+                setActiveWithinDays(Number(e.target.value));
+                setOffset(0);
+              }}
+            >
+              <option value={1}>1 day</option>
+              <option value={7}>7 days</option>
+              <option value={30}>30 days</option>
+            </Select>
+          </Field>
+        </div>
+      </Card>
+      {metrics.isPending && <p>Loading metrics…</p>}
+      {metrics.isError && (
+        <p role="alert">
+          Could not load metrics.{' '}
+          <button type="button" onClick={() => void metrics.refetch()}>
+            Retry
+          </button>
+        </p>
+      )}
+      {metrics.data && !metrics.isError && <DeviceMetricsPanel data={metrics.data} />}
 
       <Card>
-        <h2 className="mb-1 font-medium">Adoption</h2>
+        <h2 className="mb-1 font-medium">Update history · all channels and activity periods</h2>
         <p className="mb-3 text-xs text-neutral-500">
           <strong>Served</strong> means we handed the install a manifest. <strong>Confirmed</strong>{' '}
-          means it later reported actually running that update — the gap is downloads that never
-          launched. Counts spanning a retention boundary are not comparable, since pruned events
-          disappear from both halves.
+          means it later reported running that update. The gap is served without observed
+          confirmation, not proof of a failed download or launch. Counts spanning a retention
+          boundary are not comparable, since pruned events disappear from both halves.
         </p>
 
+        {adoption.isPending && <p>Loading update history…</p>}
+        {adoption.isError && (
+          <p role="alert">
+            Could not load update history.{' '}
+            <button type="button" onClick={() => void adoption.refetch()}>
+              Retry
+            </button>
+          </p>
+        )}
         {adoption.data?.byUpdate.length === 0 && (
           <p className="text-sm text-neutral-500">No installs have checked in yet.</p>
         )}
@@ -126,7 +194,7 @@ export function DevicesPage() {
                 <th className="pb-2 font-normal">Update</th>
                 <th className="pb-2 font-normal">Release</th>
                 <th className="pb-2 font-normal">Runtime</th>
-                <th className="pb-2 font-normal">Running</th>
+                <th className="pb-2 font-normal">Last observed running</th>
                 <th className="pb-2 font-normal">Served</th>
                 <th className="pb-2 font-normal">Confirmed</th>
               </tr>
@@ -141,9 +209,10 @@ export function DevicesPage() {
                     <button
                       type="button"
                       className="font-mono text-xs underline decoration-dotted"
-                      onClick={() =>
-                        setSelectedUpdate(selectedUpdate === row.updateId ? null : row.updateId)
-                      }
+                      onClick={() => {
+                        setSelectedUpdate(selectedUpdate === row.updateId ? null : row.updateId);
+                        setRecipientOffset(0);
+                      }}
                     >
                       {shortId(row.updateId)}
                     </button>
@@ -151,7 +220,7 @@ export function DevicesPage() {
                   <td className="py-2">
                     {row.releaseNumber === null ? (
                       // An update id we never issued — an embedded bundle.
-                      <span className="text-xs text-neutral-400">embedded</span>
+                      <span className="text-xs text-neutral-400">embedded / unknown</span>
                     ) : (
                       <span className="font-mono">#{row.releaseNumber}</span>
                     )}
@@ -172,6 +241,15 @@ export function DevicesPage() {
           <h2 className="mb-3 font-medium">
             Received <span className="font-mono text-sm">{shortId(selectedUpdate)}</span>
           </h2>
+          {recipients.isPending && <p>Loading recipients…</p>}
+          {recipients.isError && (
+            <p role="alert">
+              Could not load recipients.{' '}
+              <button type="button" onClick={() => void recipients.refetch()}>
+                Retry
+              </button>
+            </p>
+          )}
           {recipients.data?.items.length === 0 && (
             <p className="text-sm text-neutral-500">No install has received this update.</p>
           )}
@@ -184,7 +262,7 @@ export function DevicesPage() {
                   <th className="pb-2 font-normal">Device</th>
                   <th className="pb-2 font-normal">Served</th>
                   <th className="pb-2 font-normal">Confirmed</th>
-                  <th className="pb-2 font-normal">Still running</th>
+                  <th className="pb-2 font-normal">Last observed running</th>
                 </tr>
               </thead>
               <tbody>
@@ -202,43 +280,51 @@ export function DevicesPage() {
                     <td className="py-2 text-xs text-neutral-500">
                       {row.confirmedAt ? formatDate(row.confirmedAt) : '—'}
                     </td>
-                    <td className="py-2">{row.stillRunning ? 'yes' : 'no'}</td>
+                    <td className="py-2">
+                      {row.lastSeenAt
+                        ? `${row.stillRunning ? 'yes' : 'no'} · ${formatDate(row.lastSeenAt)}`
+                        : 'unknown (record pruned)'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
+          {recipients.data && (
+            <div className="mt-3 flex gap-3 text-sm">
+              <button
+                type="button"
+                disabled={recipientOffset === 0}
+                onClick={() => setRecipientOffset(Math.max(0, recipientOffset - PAGE_SIZE))}
+              >
+                Previous
+              </button>
+              <span>
+                {recipients.data.total === 0 ? 0 : recipientOffset + 1}–
+                {Math.min(recipientOffset + PAGE_SIZE, recipients.data.total)} of{' '}
+                {recipients.data.total}
+              </span>
+              <button
+                type="button"
+                disabled={recipientOffset + PAGE_SIZE >= recipients.data.total}
+                onClick={() => setRecipientOffset(recipientOffset + PAGE_SIZE)}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </Card>
       )}
 
       <Card className="space-y-3">
-        <h2 className="font-medium">Installs</h2>
+        <h2 className="font-medium">Install records</h2>
+        <p className="text-xs text-neutral-500">
+          User and device filters below apply only to this list. User-ID fallback rows represent
+          users, not individual installs.
+        </p>
         {/* Every text filter is an exact match; the labels say so because a
             partial id otherwise looks like "no installs". */}
         <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
-          <Field label="Platform">
-            <Select
-              value={platform}
-              onChange={(e) => {
-                setPlatform(e.target.value);
-                setOffset(0);
-              }}
-            >
-              <option value="">any</option>
-              <option value="android">android</option>
-              <option value="ios">ios</option>
-            </Select>
-          </Field>
-          <Field label="Runtime version (exact)">
-            <Input
-              value={runtimeVersion}
-              placeholder="any"
-              onChange={(e) => {
-                setRuntimeVersion(e.target.value);
-                setOffset(0);
-              }}
-            />
-          </Field>
           <Field label="User id (exact)">
             <Input
               value={userId}
@@ -271,6 +357,15 @@ export function DevicesPage() {
           </Field>
         </div>
 
+        {devices.isPending && <p>Loading install records…</p>}
+        {devices.isError && (
+          <p role="alert">
+            Could not load install records.{' '}
+            <button type="button" onClick={() => void devices.refetch()}>
+              Retry
+            </button>
+          </p>
+        )}
         {devices.data?.items.length === 0 && (
           <p className="text-sm text-neutral-500">No installs match.</p>
         )}
@@ -286,7 +381,7 @@ export function DevicesPage() {
                 <th className="pb-2 font-normal">Device</th>
                 <th className="pb-2 font-normal">Channel</th>
                 <th className="pb-2 font-normal">Runtime</th>
-                <th className="pb-2 font-normal">Running</th>
+                <th className="pb-2 font-normal">Last observed running</th>
                 <th className="pb-2 font-normal">Last seen</th>
               </tr>
             </thead>
@@ -311,7 +406,7 @@ export function DevicesPage() {
                     {row.currentReleaseNumber !== null ? (
                       <span className="font-mono">#{row.currentReleaseNumber}</span>
                     ) : row.currentUpdateId ? (
-                      <span className="text-xs text-neutral-400">embedded</span>
+                      <span className="text-xs text-neutral-400">embedded / unknown</span>
                     ) : (
                       '—'
                     )}

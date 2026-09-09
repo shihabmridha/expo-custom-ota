@@ -100,6 +100,7 @@ export const deviceRecipientsSchema = z.object({
       confirmedAt: z.string().nullable(),
       /** False once the install has moved on to something else. */
       stillRunning: z.boolean(),
+      lastSeenAt: z.string().nullable(),
     }),
   ),
   total: z.number().int(),
@@ -111,3 +112,45 @@ export type DeviceInstall = z.infer<typeof deviceInstallSchema>;
 export type DeviceList = z.infer<typeof deviceListSchema>;
 export type DeviceAdoption = z.infer<typeof deviceAdoptionSchema>;
 export type DeviceRecipients = z.infer<typeof deviceRecipientsSchema>;
+
+export const deviceMetricsQuerySchema = deviceListQuerySchema
+  .pick({
+    channel: true,
+    platform: true,
+    runtimeVersion: true,
+  })
+  .extend({
+    activeWithinDays: z.coerce
+      .number()
+      .refine((n) => [1, 7, 30].includes(n), 'Expected 1, 7, or 30')
+      .default(7),
+  });
+
+export const deviceMetricsSchema = z.object({
+  calculatedAt: z.string(),
+  trackingEnabled: z.boolean(),
+  retentionDays: z.number().int(),
+  activeWithinDays: z.number().int(),
+  userFallbackRecords: z.number().int(),
+  inactivity: z.object({
+    within7d: z.number().int(),
+    over7Through30d: z.number().int(),
+    over30Through60d: z.number().int(),
+    over60d: z.number().int(),
+  }),
+  groups: z.array(
+    z.object({
+      channelName: z.string(),
+      platform: platformSchema,
+      runtimeVersion: z.string(),
+      deploymentState: z.enum(['update', 'rollback', 'none']),
+      updateId: z.string().nullable(),
+      releaseNumber: z.number().int().nullable(),
+      activeEligible: z.number().int(),
+      activeOnTarget: z.number().int(),
+      unknownCurrentUpdate: z.number().int(),
+      adoptionPercent: z.number().nullable(),
+    }),
+  ),
+});
+export type DeviceMetrics = z.infer<typeof deviceMetricsSchema>;

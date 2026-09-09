@@ -167,3 +167,26 @@ restart the server.
 
 Devices configured for that channel would stop receiving updates. Remove or repoint the
 deployments first.
+
+## Device metrics look incomplete
+
+The Devices page reports retained OTA observations, not a census of installations. Its active
+adoption denominator includes only matching channel/platform/runtime installs seen within the
+selected window. User-ID fallback records are counted separately. The list shares these filters;
+user and device-fact filters affect only the list. The history panel is application-wide.
+Unknown current update IDs remain in the denominator. “Served without observed confirmation”
+can mean a pending download, a client that has not checked in again, or a failure; it is not a
+failure count. “Last observed running” always describes the latest check-in, not live state.
+
+Retention defaults to 90 days and is applied by `prune:devices`; configuring retention alone
+does not schedule that script. Inactivity buckets can shrink after pruning. Retention of zero
+keeps records indefinitely. No historical snapshots or uninstall estimates are collected.
+
+Look for `tracking_write_failed` warnings at the default info log level. Each includes a
+`category` (`usage` or `device`), the current failing `applicationId`, and `suppressedFailures`
+since the last warning. Warnings appear immediately, then on the next failure at least one
+minute later. Throttling is per category across the server instance, resets on restart, and
+does not coordinate across instances. Suppressed counts may span applications and are not
+per-application totals. Raw database errors and client data are omitted. Check migrations,
+database availability, disk space, and filesystem permissions. Tracking failure never changes
+an OTA response; use these warnings to distinguish missing telemetry from absent traffic.

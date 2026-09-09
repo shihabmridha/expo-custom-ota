@@ -26,8 +26,10 @@ export const qk = {
   clientConfig: (id: string) => ['applications', id, 'client-config'] as const,
   signing: (id: string) => ['applications', id, 'signing'] as const,
   metrics: (id: string) => ['applications', id, 'metrics'] as const,
+  deviceMetrics: (id: string, filters: unknown) =>
+    ['applications', id, 'device-metrics', filters] as const,
   deviceAdoption: (id: string) => ['applications', id, 'device-adoption'] as const,
   devices: (id: string, filters?: unknown) => ['applications', id, 'devices', filters] as const,
-  deviceRecipients: (id: string, updateId: string) =>
-    ['applications', id, 'updates', updateId, 'devices'] as const,
+  deviceRecipients: (id: string, updateId: string, offset = 0) =>
+    ['applications', id, 'updates', updateId, 'devices', offset] as const,
 };

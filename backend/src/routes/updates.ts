@@ -99,12 +99,19 @@ updatesRoutes.all('/:updateKey', async (c) => {
   // underneath, so voiding the promise buys no real latency, and awaiting is
   // what keeps the integration tests deterministic.
   const trackDevice = (servedUpdateId: string | null) =>
-    recordDeviceUpdate(db, logger, env.DEVICE_TRACKING_ENABLED, {
-      applicationId: application.id,
-      request,
-      channelName,
-      servedUpdateId,
-    });
+    recordDeviceUpdate(
+      db,
+      logger,
+      env.DEVICE_TRACKING_ENABLED,
+      {
+        applicationId: application.id,
+        request,
+        channelName,
+        servedUpdateId,
+      },
+      new Date(),
+      c.var.trackingDiagnostics,
+    );
 
   const decision = await selectUpdate(db, {
     applicationId: application.id,
@@ -167,7 +174,14 @@ updatesRoutes.all('/:updateKey', async (c) => {
       }
 
       logger.info('update_served', { ...requestLog, servedUpdateId: decision.updateId });
-      await recordUpdateRequest(db, application.id, request.platform, 'update_served');
+      await recordUpdateRequest(
+        db,
+        application.id,
+        request.platform,
+        'update_served',
+        new Date(),
+        c.var.trackingDiagnostics,
+      );
       await trackDevice(decision.updateId);
 
       return toResponse(
@@ -194,7 +208,14 @@ updatesRoutes.all('/:updateKey', async (c) => {
       }
 
       logger.info('roll_back_to_embedded_served', requestLog);
-      await recordUpdateRequest(db, application.id, request.platform, 'roll_back_to_embedded');
+      await recordUpdateRequest(
+        db,
+        application.id,
+        request.platform,
+        'roll_back_to_embedded',
+        new Date(),
+        c.var.trackingDiagnostics,
+      );
       await trackDevice(null);
 
       return toResponse(
@@ -204,7 +225,14 @@ updatesRoutes.all('/:updateKey', async (c) => {
 
     default: {
       logger.info('no_update_available', { ...requestLog, reason: decision.reason });
-      await recordUpdateRequest(db, application.id, request.platform, 'no_update_available');
+      await recordUpdateRequest(
+        db,
+        application.id,
+        request.platform,
+        'no_update_available',
+        new Date(),
+        c.var.trackingDiagnostics,
+      );
       await trackDevice(null);
 
       if (!canSendDirective) {

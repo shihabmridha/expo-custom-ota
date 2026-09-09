@@ -2,6 +2,7 @@ import type { OtaDatabase } from '@ota/db';
 import type { AssetStorage } from '@ota/types';
 import type { Env } from './config/env.ts';
 import type { Logger } from './lib/logger.ts';
+import type { TrackingDiagnostics } from './lib/tracking-diagnostics.ts';
 import type { SessionAdmin } from './services/auth.ts';
 import type { SigningService } from './services/signing.ts';
 
@@ -12,6 +13,7 @@ export interface AppEnv {
     storage: AssetStorage;
     env: Env;
     logger: Logger;
+    trackingDiagnostics: TrackingDiagnostics;
     /** One per app instance — its signer cache is the point. */
     signing: SigningService;
     requestId: string;

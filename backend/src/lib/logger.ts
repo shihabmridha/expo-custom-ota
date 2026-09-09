@@ -33,6 +33,7 @@ export const LOG_EVENTS = [
   'runtime_mismatch',
   'device_identity_missing',
   'device_tracking_failed',
+  'tracking_write_failed',
   'extra_params_unparsable',
 
   'asset_served',

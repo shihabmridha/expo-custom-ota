@@ -2,6 +2,7 @@ import type { OtaDatabase } from '@ota/db';
 import { usageDaily } from '@ota/db';
 import type { Platform, UpdateRequestResult } from '@ota/types';
 import { sql } from 'drizzle-orm';
+import type { TrackingDiagnostics } from '../lib/tracking-diagnostics.ts';
 
 /**
  * Operational counters.
@@ -21,6 +22,7 @@ export async function recordUpdateRequest(
   platform: Platform,
   result: UpdateRequestResult,
   now = new Date(),
+  diagnostics?: TrackingDiagnostics,
 ): Promise<void> {
   try {
     await db
@@ -31,6 +33,7 @@ export async function recordUpdateRequest(
         set: { count: sql`${usageDaily.count} + 1` },
       });
   } catch {
+    diagnostics?.failure('usage', applicationId);
     // Counters must never break update delivery. An installed app staying
     // usable matters more than a metric.
   }

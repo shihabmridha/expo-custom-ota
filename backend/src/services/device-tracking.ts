@@ -4,6 +4,7 @@ import { type ExpoUpdateRequest, P_INSTALL_ID, sanitizeIdentifier } from '@ota/p
 import type { DeviceClientIdSource } from '@ota/types';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Logger } from '../lib/logger.ts';
+import type { TrackingDiagnostics } from '../lib/tracking-diagnostics.ts';
 
 /**
  * Per-install update tracking.
@@ -96,6 +97,7 @@ export async function recordDeviceUpdate(
   enabled: boolean,
   input: DeviceTrackingInput,
   now = new Date(),
+  diagnostics?: TrackingDiagnostics,
 ): Promise<void> {
   if (!enabled) return;
 
@@ -241,14 +243,7 @@ export async function recordDeviceUpdate(
       .update(deviceInstalls)
       .set({ confirmedUpdateId: current })
       .where(and(eq(deviceInstalls.id, install.id), eq(deviceInstalls.currentUpdateId, current)));
-  } catch (error) {
-    // Same contract as `recordUpdateRequest`: tracking must never break update
-    // delivery. Logged rather than silently swallowed, because schema drift
-    // here is otherwise undiagnosable — but at debug, so a persistently broken
-    // table cannot flood a production log.
-    logger.debug('device_tracking_failed', {
-      applicationId: input.applicationId,
-      message: (error as Error).message,
-    });
+  } catch {
+    diagnostics?.failure('device', input.applicationId);
   }
 }

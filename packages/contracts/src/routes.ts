@@ -18,6 +18,8 @@ import {
   deviceAdoptionSchema,
   deviceListQuerySchema,
   deviceListSchema,
+  deviceMetricsQuerySchema,
+  deviceMetricsSchema,
   deviceRecipientsQuerySchema,
   deviceRecipientsSchema,
 } from './schemas/device.ts';
@@ -257,6 +259,14 @@ export const contracts = {
   },
 
   devices: {
+    metrics: route({
+      method: 'GET',
+      path: '/api/admin/applications/:id/device-metrics',
+      query: deviceMetricsQuerySchema,
+      response: deviceMetricsSchema,
+      auth: 'admin',
+      summary: 'Active adoption and retained install inactivity',
+    }),
     adoption: route({
       method: 'GET',
       path: '/api/admin/applications/:id/device-adoption',

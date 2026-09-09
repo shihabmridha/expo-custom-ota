@@ -394,3 +394,28 @@ silent. Extra-param key constants live in `packages/protocol/src/headers.ts`.
 
 **The D16 line holds.** Nothing in `selectUpdate` or the update path reads these columns. They
 are app-supplied like the user id, so they are kept out of logs the same way (`CLAUDE.md`).
+
+## D19 — Active adoption and inactivity use retained observations
+
+`GET /api/admin/applications/:id/device-metrics` calculates install metrics from existing
+state without changing selection or adding writes. Channel, platform and runtime are exact
+optional filters. Adoption uses a 1, 7 (default), or 30 day activity window and compares each
+current manifest deployment with install observations in its channel/platform/runtime group.
+Both numerator and denominator use the same cutoff, inclusive of its boundary. A missing
+current update ID or an embedded update stays in the denominator; `unknownCurrentUpdate`
+counts active installs that have not reported a current update ID. A zero denominator, absent
+manifest deployment, or rollback directive yields a null percentage, not zero adoption.
+
+Only `eas` and `extra` identities count as installs; user-ID fallback records are reported
+separately. No claim is made about devices that never checked in or lacked an identity.
+Inactivity buckets are non-overlapping: at most 7 days, over 7 through 30, over 30 through 60,
+and over 60 days since the last OTA check-in. They ignore the adoption activity window but
+respect the other metric filters. They are not uninstall estimates or app usage measurements.
+A returning install immediately moves buckets. Pruning changes the retained population;
+there is no lifetime counter, snapshot history, or backfill in this feature.
+
+The existing adoption endpoint retains its response semantics for compatibility. The dashboard
+labels its state as last observed running, and labels unconfirmed serves without inferring
+failed downloads or launches. Its history panel remains application-wide, separately from
+filtered active adoption. Recipient pagination now happens in SQL with client-ID tie-breaking;
+pruned install records leave their events visible and have a null `lastSeenAt`.
