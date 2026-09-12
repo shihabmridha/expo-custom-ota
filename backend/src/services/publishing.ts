@@ -339,7 +339,7 @@ export async function createRollbackRelease(
   await db.run(sql`
     INSERT INTO releases
       (id, application_id, release_number, message, status, import_status,
-       rollback_of_release_id, created_by, created_at, updated_at)
+       rollback_of_release_id, source_revision, source_metadata, created_by, created_at, updated_at)
     SELECT
       ${newReleaseId},
       ${source.applicationId},
@@ -348,6 +348,8 @@ export async function createRollbackRelease(
       'published',
       'ready',
       ${source.id},
+      ${source.sourceRevision},
+      ${source.sourceMetadata ? JSON.stringify(source.sourceMetadata) : null},
       ${input.actorAdminId ?? null},
       ${now},
       ${now}

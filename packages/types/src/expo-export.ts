@@ -45,7 +45,11 @@ export interface ExpoClientConfig {
   version?: string;
   runtimeVersion?: string | { policy: string };
   sdkVersion?: string;
-  android?: { package?: string; runtimeVersion?: string | { policy: string } };
+  android?: {
+    package?: string;
+    versionCode?: number;
+    runtimeVersion?: string | { policy: string };
+  };
   ios?: { bundleIdentifier?: string; runtimeVersion?: string | { policy: string } };
   updates?: Record<string, unknown>;
   extra?: Record<string, unknown>;

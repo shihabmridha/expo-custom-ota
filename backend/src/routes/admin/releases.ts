@@ -27,6 +27,8 @@ function serializeRelease(release: ReleaseRow) {
     importStatus: release.importStatus,
     importError: release.importError,
     sourceFilename: release.sourceFilename,
+    sourceRevision: release.sourceRevision,
+    sourceMetadata: release.sourceMetadata,
     sourceSizeBytes: release.sourceSizeBytes,
     rollbackOfReleaseId: release.rollbackOfReleaseId,
     createdAt: release.createdAt.toISOString(),

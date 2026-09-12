@@ -1,3 +1,4 @@
+import { sourceRevisionSchema } from '@ota/contracts';
 import type { OtaDatabase } from '@ota/db';
 import { deviceInstalls, deviceUpdateEvents } from '@ota/db';
 import { type ExpoUpdateRequest, P_INSTALL_ID, sanitizeIdentifier } from '@ota/protocol';
@@ -113,6 +114,13 @@ export async function recordDeviceUpdate(
   }
 
   const { request } = input;
+  const reportedSource = sourceRevisionSchema.safeParse(request.extraParams['source-revision']);
+  const sourceRevision =
+    request.currentUpdateId &&
+    request.extraParams['source-update-id']?.toLowerCase() === request.currentUpdateId &&
+    reportedSource.success
+      ? reportedSource.data
+      : null;
 
   try {
     // 1. State. One statement: creates or updates, and RETURNING hands back the
@@ -131,6 +139,7 @@ export async function recordDeviceUpdate(
         channelName: input.channelName,
         runtimeVersion: request.runtimeVersion,
         currentUpdateId: request.currentUpdateId,
+        sourceRevision,
         currentUpdateSince: request.currentUpdateId ? now : null,
         embeddedUpdateId: request.embeddedUpdateId,
         lastServedUpdateId: input.servedUpdateId,
@@ -149,6 +158,7 @@ export async function recordDeviceUpdate(
           channelName: sql`excluded.channel_name`,
           runtimeVersion: sql`excluded.runtime_version`,
           currentUpdateId: sql`excluded.current_update_id`,
+          sourceRevision: sql`excluded.source_revision`,
           // `IS NOT` is SQLite's null-safe "is distinct from", so an install
           // that *stops* reporting an update id counts as a change rather than
           // silently keeping a stale timestamp.

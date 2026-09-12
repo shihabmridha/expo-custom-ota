@@ -29,6 +29,13 @@
       "when": 1788360808486,
       "tag": "0003_left_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1789192061563,
+      "tag": "0004_source_release_metadata",
+      "breakpoints": true
     }
   ]
 }

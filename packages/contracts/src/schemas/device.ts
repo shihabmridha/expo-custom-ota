@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { paginationQuerySchema, platformSchema } from './common.ts';
+import { sourceRevisionSchema } from './source-metadata.ts';
 
 /**
  * Per-install tracking, read side.
@@ -26,6 +27,8 @@ export const deviceInstallSchema = z.object({
   channelName: z.string(),
   runtimeVersion: z.string(),
   currentUpdateId: z.string().nullable(),
+  sourceRevision: sourceRevisionSchema.nullable(),
+  launchKind: z.enum(['embedded', 'downloaded', 'unknown']),
   currentUpdateSince: z.string().nullable(),
   /** Release number of `currentUpdateId`, when it is one of ours. */
   currentReleaseNumber: z.number().int().nullable(),
@@ -154,3 +157,22 @@ export const deviceMetricsSchema = z.object({
   ),
 });
 export type DeviceMetrics = z.infer<typeof deviceMetricsSchema>;
+
+export const deviceSourceGroupsSchema = z.object({
+  groups: z.array(
+    z.object({
+      channelName: z.string(),
+      platform: platformSchema,
+      runtimeVersion: z.string(),
+      sourceRevision: sourceRevisionSchema.nullable(),
+      installs: z.number().int(),
+      updates: z.array(
+        z.object({
+          updateId: z.string().nullable(),
+          launchKind: z.enum(['embedded', 'downloaded', 'unknown']),
+          installs: z.number().int(),
+        }),
+      ),
+    }),
+  ),
+});

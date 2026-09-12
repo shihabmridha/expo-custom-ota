@@ -4,3 +4,4 @@ export * from './schemas/application.ts';
 export * from './schemas/common.ts';
 export * from './schemas/device.ts';
 export * from './schemas/release.ts';
+export * from './schemas/source-metadata.ts';

@@ -74,6 +74,10 @@ export function DevicesPage() {
     queryKey: qk.deviceAdoption(id!),
     queryFn: () => api.devices.adoption({ params: { id: id! } }),
   });
+  const sourceGroups = useQuery({
+    queryKey: ['device-source-groups', id, metricFilters],
+    queryFn: () => api.devices.sourceGroups({ params: { id: id! }, query: metricFilters }),
+  });
   const devices = useQuery({
     queryKey: qk.devices(id!, filters),
     queryFn: () => api.devices.list({ params: { id: id! }, query: filters }),
@@ -166,6 +170,61 @@ export function DevicesPage() {
       {metrics.data && !metrics.isError && <DeviceMetricsPanel data={metrics.data} />}
 
       <Card>
+        <h2 className="mb-1 font-medium">Source releases</h2>
+        <p className="mb-3 text-xs text-neutral-500">
+          Installs seen within the selected activity window, grouped by source revision, channel,
+          platform and runtime. User-ID fallback records are excluded. A shared source revision does
+          not imply identical bundle bytes.
+        </p>
+        {sourceGroups.isPending && <p>Loading source releases…</p>}
+        {sourceGroups.isError && (
+          <p role="alert">
+            Could not load source releases.{' '}
+            <button type="button" onClick={() => void sourceGroups.refetch()}>
+              Retry
+            </button>
+          </p>
+        )}
+        {sourceGroups.data?.groups.length === 0 && (
+          <p className="text-sm text-neutral-500">No installs match.</p>
+        )}
+        {sourceGroups.data?.groups.map((group) => (
+          <details
+            key={JSON.stringify([
+              group.channelName,
+              group.platform,
+              group.runtimeVersion,
+              group.sourceRevision,
+            ])}
+            className="border-t border-neutral-200 py-3 dark:border-neutral-800"
+          >
+            <summary className="cursor-pointer text-sm">
+              <span className="break-all font-mono">
+                {group.sourceRevision ?? 'Unknown source revision'}
+              </span>
+              <span className="ml-2 text-neutral-500">
+                {group.channelName} · {group.platform} · runtime {group.runtimeVersion} ·{' '}
+                {group.installs} {group.installs === 1 ? 'install' : 'installs'}
+              </span>
+            </summary>
+            <ul className="mt-2 space-y-2 text-xs">
+              {group.updates.map((update) => (
+                <li key={`${update.updateId ?? 'unknown'}-${update.launchKind}`}>
+                  <span className="break-all font-mono">
+                    {update.updateId ?? 'Unknown update ID'}
+                  </span>
+                  {' · '}
+                  {update.launchKind}
+                  {' · '}
+                  {update.installs} {update.installs === 1 ? 'install' : 'installs'}
+                </li>
+              ))}
+            </ul>
+          </details>
+        ))}
+      </Card>
+
+      <Card>
         <h2 className="mb-1 font-medium">Update history · all channels and activity periods</h2>
         <p className="mb-3 text-xs text-neutral-500">
           <strong>Served</strong> means we handed the install a manifest. <strong>Confirmed</strong>{' '}
@@ -219,7 +278,6 @@ export function DevicesPage() {
                   </td>
                   <td className="py-2">
                     {row.releaseNumber === null ? (
-                      // An update id we never issued — an embedded bundle.
                       <span className="text-xs text-neutral-400">embedded / unknown</span>
                     ) : (
                       <span className="font-mono">#{row.releaseNumber}</span>
@@ -406,10 +464,22 @@ export function DevicesPage() {
                     {row.currentReleaseNumber !== null ? (
                       <span className="font-mono">#{row.currentReleaseNumber}</span>
                     ) : row.currentUpdateId ? (
-                      <span className="text-xs text-neutral-400">embedded / unknown</span>
+                      <span className="text-xs text-neutral-400">
+                        {row.launchKind === 'embedded'
+                          ? 'Embedded build'
+                          : row.launchKind === 'downloaded'
+                            ? 'Downloaded update'
+                            : 'Unknown update'}
+                      </span>
                     ) : (
                       '—'
                     )}
+                    <div className="max-w-xs break-all text-xs text-neutral-500">
+                      {row.sourceRevision ?? 'Unknown source revision'} · {row.launchKind}
+                    </div>
+                    <div className="max-w-xs break-all font-mono text-xs">
+                      {row.currentUpdateId}
+                    </div>
                   </td>
                   <td className="py-2 text-xs text-neutral-500">{formatDate(row.lastSeenAt)}</td>
                 </tr>

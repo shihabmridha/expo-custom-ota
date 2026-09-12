@@ -4,6 +4,7 @@ import {
   PLATFORMS,
   RELEASE_ASSET_TYPES,
   RELEASE_STATUSES,
+  type SourceMetadata,
 } from '@ota/types';
 import { sql } from 'drizzle-orm';
 import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
@@ -31,6 +32,8 @@ export const releases = sqliteTable(
     importError: text('import_error'),
 
     sourceFilename: text('source_filename'),
+    sourceRevision: text('source_revision'),
+    sourceMetadata: text('source_metadata', { mode: 'json' }).$type<SourceMetadata>(),
     sourceHash: text('source_hash'),
     sourceStorageKey: text('source_storage_key'),
     sourceSizeBytes: integer('source_size_bytes'),

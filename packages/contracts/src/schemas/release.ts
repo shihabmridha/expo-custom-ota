@@ -5,6 +5,7 @@ import {
   platformSchema,
   releaseStatusSchema,
 } from './common.ts';
+import { sourceMetadataSchema, sourceRevisionSchema } from './source-metadata.ts';
 
 export const releaseVariantSchema = z.object({
   id: z.string(),
@@ -28,6 +29,8 @@ export const releaseSchema = z.object({
   importStatus: importStatusSchema,
   importError: z.string().nullable(),
   sourceFilename: z.string().nullable(),
+  sourceRevision: sourceRevisionSchema.nullable(),
+  sourceMetadata: sourceMetadataSchema.nullable(),
   sourceSizeBytes: z.number().int().nullable(),
   rollbackOfReleaseId: z.string().nullable(),
   createdAt: z.string(),

@@ -4,6 +4,11 @@ import { and, asc, desc, eq, gte, inArray, isNotNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import type { AppEnv } from '../../app-env.ts';
 import { getDeviceMetrics } from '../../services/device-metrics.ts';
+import {
+  getDeviceSourceGroups,
+  installLaunchKind,
+  installSourceRevision,
+} from '../../services/device-source-groups.ts';
 import { handle } from './validate.ts';
 
 /**
@@ -17,6 +22,13 @@ import { handle } from './validate.ts';
  * below are complete.
  */
 export const deviceRoutes = new Hono<AppEnv>();
+
+deviceRoutes.get(
+  '/applications/:id/device-source-groups',
+  handle(contracts.devices.sourceGroups, async (c, { query }) =>
+    c.json(await getDeviceSourceGroups(c.var.db, c.req.param('id')!, query)),
+  ),
+);
 
 deviceRoutes.get(
   '/applications/:id/device-metrics',
@@ -45,11 +57,22 @@ const DAY_MS = 86_400_000;
 async function releaseNumbersByUpdateId(
   db: AppEnv['Variables']['db'],
   applicationId: string,
-): Promise<Map<string, { releaseNumber: number; platform: string; runtimeVersion: string }>> {
+): Promise<
+  Map<
+    string,
+    {
+      releaseNumber: number;
+      platform: string;
+      runtimeVersion: string;
+      sourceRevision: string | null;
+    }
+  >
+> {
   const rows = await db
     .select({
       updateId: schema.releaseVariants.updateId,
       releaseNumber: schema.releases.releaseNumber,
+      sourceRevision: schema.releases.sourceRevision,
       platform: schema.releaseVariants.platform,
       runtimeVersion: schema.releaseVariants.runtimeVersion,
     })
@@ -207,6 +230,11 @@ deviceRoutes.get(
         channelName: r.channelName,
         runtimeVersion: r.runtimeVersion,
         currentUpdateId: r.currentUpdateId,
+        sourceRevision: installSourceRevision(
+          r,
+          r.currentUpdateId ? variants.get(r.currentUpdateId) : undefined,
+        ),
+        launchKind: installLaunchKind(r.currentUpdateId, r.embeddedUpdateId),
         currentUpdateSince: r.currentUpdateSince?.toISOString() ?? null,
         currentReleaseNumber: r.currentUpdateId
           ? (variants.get(r.currentUpdateId)?.releaseNumber ?? null)

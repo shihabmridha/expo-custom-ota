@@ -59,6 +59,7 @@ export const deviceInstalls = sqliteTable(
 
     /** Last `expo-current-update-id` reported — what the install is running. */
     currentUpdateId: text('current_update_id'),
+    sourceRevision: text('source_revision'),
     /** When `current_update_id` last *changed*. "Running X since." */
     currentUpdateSince: integer('current_update_since', { mode: 'timestamp_ms' }),
     /** Last `expo-embedded-update-id` — the bundle baked into its binary. */

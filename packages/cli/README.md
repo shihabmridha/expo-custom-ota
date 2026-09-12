@@ -48,6 +48,7 @@ Options:
 * `-p, --project <dir>`: Expo project directory (default `.`)
 * `-o, --out <path>`: Output ZIP path (default `<project>/update.zip`)
 * `--skip-export`: Skip running `expo export` and package an existing `dist/` folder
+* `--release-metadata <path>`: Embed the descriptor's source revision during a fresh Android export and include `releaseMetadata.json` in the archive; cannot be combined with `--skip-export`
 * `--platform <list>`: Platforms to export: `all`, `android`, `ios` (default `all`)
 * `-q, --quiet`: Suppress non-error logs
 
@@ -75,3 +76,26 @@ Or set environment variables in CI/CD:
 ```bash
 npx expo-custom-ota publish
 ```
+
+### Source release grouping (0.1.3)
+
+Both `pack` and `publish` accept `--release-metadata <path>`. The versioned
+descriptor contract is `sourceMetadataSchema` in `@ota/contracts`. It includes
+`sourceRevision` (`appVersion+gitCommit`), application package, environment,
+platform, runtime and native versions, toolchain versions, and a SHA-256 public
+configuration digest. Descriptors must not contain credentials or extra fields.
+
+The CLI checks descriptor application/version/runtime against Expo config and
+inlines `EXPO_PUBLIC_SOURCE_REVISION` into the fresh export. `publish` also checks
+the descriptor environment against its destination channel before contacting the
+server. The CLI requires a clean Git checkout at the descriptor's commit before
+export and checks it again after assembling the archive, before writing it or
+contacting the server. Source edits, new untracked files, and commit changes abort
+publication. Keep generated output, the output ZIP, and local descriptors
+gitignored. The application's release script owns effective configuration and
+toolchain verification; arbitrary existing exports cannot acquire a descriptor
+through `--skip-export`.
+
+Deploy server migration `0004_source_release_metadata` and its API changes before
+using this CLI version or the updated dashboard. Package publication is manual.
+Legacy archives without metadata continue to work.

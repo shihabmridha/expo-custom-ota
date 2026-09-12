@@ -1,7 +1,9 @@
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join, relative, resolve } from 'node:path';
+import { sourceMetadataSchema } from '@ota/contracts';
+import type { SourceMetadata } from '@ota/types';
 import { zipSync } from 'fflate';
 
 /**
@@ -25,6 +27,7 @@ export interface PackOptions {
   outPath?: string;
   skipExport?: boolean;
   quiet?: boolean;
+  releaseMetadataPath?: string;
   /**
    * Platforms to pass to `expo export --platform`. Defaults to `'all'`.
    */
@@ -42,7 +45,12 @@ export interface PackOptions {
    * real Expo project or a network-reachable `npx` — real callers never need
    * to pass this.
    */
-  runExpoExport?: (projectDir: string, platform: string, quiet: boolean) => void;
+  runExpoExport?: (
+    projectDir: string,
+    platform: string,
+    quiet: boolean,
+    env?: NodeJS.ProcessEnv,
+  ) => void;
 }
 
 export interface PackResult {
@@ -51,6 +59,20 @@ export interface PackResult {
   fileCount: number;
   platforms: string[];
   archive: Uint8Array;
+  sourceMetadata: SourceMetadata | null;
+}
+
+function verifySourceCheckout(projectDir: string, metadata: SourceMetadata): void {
+  const git = (...args: string[]) =>
+    execFileSync('git', ['-C', projectDir, ...args], { encoding: 'utf8' }).trim();
+  if (
+    git('rev-parse', 'HEAD') !== metadata.gitCommit ||
+    git('status', '--porcelain', '--untracked-files=all')
+  ) {
+    throw new Error(
+      'Source checkout must be clean and match the release metadata commit before and after export.',
+    );
+  }
 }
 
 /** The real `@expo/config` loader, resolved the way the project itself would resolve it. */
@@ -69,12 +91,28 @@ export async function defaultLoadExpoConfig(projectDir: string): Promise<ExpoPub
 }
 
 /** The real `expo export` invocation, run as the target project's own `npx` would run it. */
-function defaultRunExpoExport(projectDir: string, platform: string, quiet: boolean): void {
-  const proc = spawnSync('npx', ['expo', 'export', '--platform', platform], {
-    cwd: projectDir,
-    stdio: quiet ? 'ignore' : 'inherit',
-    shell: process.platform === 'win32',
-  });
+function defaultRunExpoExport(
+  projectDir: string,
+  platform: string,
+  quiet: boolean,
+  env?: NodeJS.ProcessEnv,
+): void {
+  const proc = spawnSync(
+    'npx',
+    [
+      'expo',
+      'export',
+      '--platform',
+      platform,
+      ...(env?.EXPO_PUBLIC_SOURCE_REVISION ? ['--clear'] : []),
+    ],
+    {
+      cwd: projectDir,
+      env: { ...process.env, ...env },
+      stdio: quiet ? 'ignore' : 'inherit',
+      shell: process.platform === 'win32',
+    },
+  );
   if (proc.status !== 0) {
     throw new Error(`expo export failed with exit code ${proc.status ?? 1}`);
   }
@@ -88,6 +126,33 @@ export async function packUpdate(options: PackOptions = {}): Promise<PackResult>
   const platform = options.platform ?? 'all';
   const loadExpoConfig = options.loadExpoConfig ?? defaultLoadExpoConfig;
   const runExpoExport = options.runExpoExport ?? defaultRunExpoExport;
+  const sourceMetadata = options.releaseMetadataPath
+    ? sourceMetadataSchema.parse(
+        JSON.parse(readFileSync(resolve(options.releaseMetadataPath), 'utf8')),
+      )
+    : null;
+
+  if (sourceMetadata && options.skipExport) {
+    throw new Error(
+      '--release-metadata requires a fresh export so its sourceRevision is embedded in the bundle.',
+    );
+  }
+  if (sourceMetadata) {
+    verifySourceCheckout(projectDir, sourceMetadata);
+    const { exp } = await loadExpoConfig(projectDir);
+    const android = exp.android as { package?: string; versionCode?: number } | undefined;
+    if (
+      platform !== sourceMetadata.platform ||
+      android?.package !== sourceMetadata.application ||
+      exp.version !== sourceMetadata.appVersion ||
+      android.versionCode !== sourceMetadata.nativeVersionCode ||
+      exp.runtimeVersion !== sourceMetadata.runtimeVersion
+    ) {
+      throw new Error(
+        'Release metadata does not match the export platform, application, runtime, or version.',
+      );
+    }
+  }
 
   if (!existsSync(join(projectDir, 'package.json'))) {
     throw new Error(`No package.json found in ${projectDir}. Pass --project <expo-project-dir>.`);
@@ -102,7 +167,12 @@ export async function packUpdate(options: PackOptions = {}): Promise<PackResult>
     // longer has a current bundle for. Only do this when we own the export; with
     // --skip-export the caller owns dist/.
     rmSync(distDir, { recursive: true, force: true });
-    runExpoExport(projectDir, platform, quiet);
+    runExpoExport(
+      projectDir,
+      platform,
+      quiet,
+      sourceMetadata ? { EXPO_PUBLIC_SOURCE_REVISION: sourceMetadata.sourceRevision } : undefined,
+    );
   } else if (!existsSync(distDir)) {
     throw new Error(`--skip-export was given but ${distDir} does not exist.`);
   }
@@ -160,12 +230,17 @@ export async function packUpdate(options: PackOptions = {}): Promise<PackResult>
 
   const files = collect(distDir);
   files['expoConfig.json'] = new TextEncoder().encode(expoConfigJson);
+  delete files['releaseMetadata.json'];
+  if (sourceMetadata) {
+    files['releaseMetadata.json'] = new TextEncoder().encode(JSON.stringify(sourceMetadata));
+  }
 
   if (!files['metadata.json']) {
     throw new Error('dist/metadata.json is missing — the export did not produce a native bundle.');
   }
 
   const archive = zipSync(files, { level: 6 });
+  if (sourceMetadata) verifySourceCheckout(projectDir, sourceMetadata);
   writeFileSync(outPath, archive);
 
   const metadata = JSON.parse(new TextDecoder().decode(files['metadata.json']));
@@ -186,5 +261,6 @@ export async function packUpdate(options: PackOptions = {}): Promise<PackResult>
     fileCount,
     platforms,
     archive,
+    sourceMetadata,
   };
 }

@@ -23,6 +23,10 @@ program
   )
   .option('-o, --out <path>', 'Output archive path (defaults to <project>/update.zip)')
   .option('--skip-export', 'Skip running `expo export` and package existing dist/ directory')
+  .option(
+    '--release-metadata <path>',
+    'Source release descriptor to embed and include in the archive',
+  )
   .option('--platform <list>', 'Platforms to export: all, android, ios', 'all')
   .option('-q, --quiet', 'Suppress non-error logs')
   .action(async (options) => {
@@ -31,6 +35,7 @@ program
         projectDir: options.project,
         outPath: options.out,
         skipExport: options.skipExport,
+        releaseMetadataPath: options.releaseMetadata,
         platform: options.platform,
         quiet: options.quiet,
       });
@@ -46,6 +51,10 @@ program
   .option('-p, --project <dir>', 'Expo project directory', '.')
   .option('-o, --out <path>', 'Output archive path')
   .option('--skip-export', 'Skip running `expo export`')
+  .option(
+    '--release-metadata <path>',
+    'Source release descriptor to embed and include in the archive',
+  )
   .option('--platform <list>', 'Platforms to export: all, android, ios', 'all')
   .option('-s, --server <url>', 'Server URL (or set OTA_SERVER_URL)')
   .option('-a, --app <id>', 'Application ID (or set OTA_APP_ID)')
@@ -69,6 +78,7 @@ program
         platform: options.platform,
         serverUrl: options.server,
         appId: options.app,
+        releaseMetadataPath: options.releaseMetadata,
         channel: options.channel,
         email: options.email,
         password: options.password,

@@ -1,3 +1,4 @@
+import { sourceMetadataSchema } from '@ota/contracts';
 import type { OtaDatabase } from '@ota/db';
 import * as schema from '@ota/db/schema/index';
 import {
@@ -218,6 +219,32 @@ export async function importRelease(
       platforms,
     );
     if (identityProblem) await fail('IDENTITY_MISMATCH', identityProblem);
+
+    if (archive.has('releaseMetadata.json')) {
+      const sourceMetadata = sourceMetadataSchema.parse(
+        JSON.parse(new TextDecoder().decode(archive.read('releaseMetadata.json'))),
+      );
+      if (
+        platforms.length !== 1 ||
+        platforms[0] !== sourceMetadata.platform ||
+        sourceMetadata.application !== application.androidPackage ||
+        sourceMetadata.runtimeVersion !== resolveRuntimeVersion(expoConfig, 'android') ||
+        sourceMetadata.appVersion !== expoConfig.version ||
+        sourceMetadata.nativeVersionCode !== expoConfig.android?.versionCode
+      ) {
+        await fail(
+          'SOURCE_METADATA_MISMATCH',
+          'Source metadata does not match the exported application, platform, runtime, or version.',
+        );
+      }
+      await db
+        .update(schema.releases)
+        .set({
+          sourceRevision: sourceMetadata.sourceRevision,
+          sourceMetadata,
+        })
+        .where(eq(schema.releases.id, releaseId));
+    }
 
     // Every path we will read, derived from metadata.json. Nothing outside this
     // allowlist is ever touched.

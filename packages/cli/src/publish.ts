@@ -36,6 +36,9 @@ export async function publishUpdate(options: PublishOptions = {}): Promise<void>
   }
 
   const packed = await packUpdate(options);
+  if (packed.sourceMetadata && packed.sourceMetadata.environment !== channel) {
+    throw new Error('Release metadata environment does not match the publication channel.');
+  }
 
   console.log(`Connecting to ${serverUrl}…`);
   const client = new OtaClient({ baseUrl: serverUrl });

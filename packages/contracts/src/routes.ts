@@ -22,6 +22,7 @@ import {
   deviceMetricsSchema,
   deviceRecipientsQuerySchema,
   deviceRecipientsSchema,
+  deviceSourceGroupsSchema,
 } from './schemas/device.ts';
 import {
   deploymentEventSchema,
@@ -259,6 +260,14 @@ export const contracts = {
   },
 
   devices: {
+    sourceGroups: route({
+      method: 'GET',
+      path: '/api/admin/applications/:id/device-source-groups',
+      query: deviceMetricsQuerySchema,
+      response: deviceSourceGroupsSchema,
+      auth: 'admin',
+      summary: 'Running installs grouped by source revision within channel and runtime',
+    }),
     metrics: route({
       method: 'GET',
       path: '/api/admin/applications/:id/device-metrics',
