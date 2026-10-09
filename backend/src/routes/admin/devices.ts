@@ -57,6 +57,8 @@ const DAY_MS = 86_400_000;
 async function releaseNumbersByUpdateId(
   db: AppEnv['Variables']['db'],
   applicationId: string,
+  /** Only these update ids; all of the application's when omitted. */
+  updateIds?: string[],
 ): Promise<
   Map<
     string,
@@ -78,7 +80,12 @@ async function releaseNumbersByUpdateId(
     })
     .from(schema.releaseVariants)
     .innerJoin(schema.releases, eq(schema.releases.id, schema.releaseVariants.releaseId))
-    .where(eq(schema.releases.applicationId, applicationId));
+    .where(
+      and(
+        eq(schema.releases.applicationId, applicationId),
+        updateIds ? inArray(schema.releaseVariants.updateId, updateIds) : undefined,
+      ),
+    );
 
   return new Map(rows.map((r) => [r.updateId, r]));
 }
@@ -103,6 +110,7 @@ deviceRoutes.get('/applications/:id/device-adoption', async (c) => {
       updateId: schema.deviceInstalls.currentUpdateId,
       n: sql<number>`count(*)`,
       runtimeVersion: sql<string | null>`max(${schema.deviceInstalls.runtimeVersion})`,
+      platform: sql<'ios' | 'android' | null>`max(${schema.deviceInstalls.platform})`,
     })
     .from(schema.deviceInstalls)
     .where(eq(schema.deviceInstalls.applicationId, applicationId))
@@ -123,12 +131,24 @@ deviceRoutes.get('/applications/:id/device-adoption', async (c) => {
 
   const byUpdate = new Map<
     string,
-    { running: number; served: number; confirmed: number; runtimeVersion: string | null }
+    {
+      running: number;
+      served: number;
+      confirmed: number;
+      runtimeVersion: string | null;
+      platform: 'ios' | 'android' | null;
+    }
   >();
   const bucket = (updateId: string) => {
     const existing = byUpdate.get(updateId);
     if (existing) return existing;
-    const created = { running: 0, served: 0, confirmed: 0, runtimeVersion: null };
+    const created = {
+      running: 0,
+      served: 0,
+      confirmed: 0,
+      runtimeVersion: null,
+      platform: null,
+    };
     byUpdate.set(updateId, created);
     return created;
   };
@@ -140,6 +160,7 @@ deviceRoutes.get('/applications/:id/device-adoption', async (c) => {
       const b = bucket(row.updateId);
       b.running = Number(row.n);
       b.runtimeVersion = row.runtimeVersion ?? null;
+      b.platform = row.platform ?? null;
     }
   }
   for (const row of funnel) {
@@ -158,14 +179,14 @@ deviceRoutes.get('/applications/:id/device-adoption', async (c) => {
       .map(([updateId, counts]) => {
         const variant = variants.get(updateId);
         // Embedded bundles are never published, so they never appear in
-        // `release_variants` — fall back to the runtime version the installs
-        // themselves reported. Installs sharing an update id come from one
-        // build, so they agree on it.
-        const { runtimeVersion: reported, ...rest } = counts;
+        // `release_variants` — fall back to the runtime version and platform the
+        // installs themselves reported. Installs sharing an update id come from
+        // one build, so they agree on both.
+        const { runtimeVersion: reported, platform: reportedPlatform, ...rest } = counts;
         return {
           updateId,
           releaseNumber: variant?.releaseNumber ?? null,
-          platform: (variant?.platform ?? null) as 'ios' | 'android' | null,
+          platform: (variant?.platform ?? reportedPlatform) as 'ios' | 'android' | null,
           runtimeVersion: variant?.runtimeVersion ?? reported ?? null,
           ...rest,
         };
@@ -216,7 +237,13 @@ deviceRoutes.get(
       .limit(query.limit)
       .offset(query.offset);
 
-    const variants = await releaseNumbersByUpdateId(db, applicationId);
+    const pageUpdateIds = [
+      ...new Set(rows.flatMap((r) => (r.currentUpdateId ? [r.currentUpdateId] : []))),
+    ];
+    const variants =
+      pageUpdateIds.length === 0
+        ? new Map()
+        : await releaseNumbersByUpdateId(db, applicationId, pageUpdateIds);
 
     return c.json({
       items: rows.map((r) => ({

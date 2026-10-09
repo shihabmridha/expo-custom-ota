@@ -6,6 +6,26 @@
   --font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
 }
 
+/*
+ * Chart roles. "How current is an install" is ordinal, so it is one blue ramp
+ * (darkest = the deployed release) rather than unrelated hues; red is reserved
+ * for the rollback state. Dark mode uses its own steps — the ramp inverts so the
+ * deployed release stays the most prominent mark on a dark surface.
+ */
+:root {
+  --viz-latest: #184f95;
+  --viz-older: #3987e5;
+  --viz-embedded: #86b6ef;
+  --viz-unknown: #b0b0ab;
+  /* Context series ("already up to date"): present, but never the story. */
+  --viz-baseline: #dededa;
+  --viz-context: #a3a3a3;
+  --viz-rollback: #e34948;
+  --viz-wash: rgb(24 79 149 / 0.1);
+  --viz-grid: #e5e5e5;
+  --viz-surface: #ffffff;
+}
+
 html {
   color-scheme: light dark;
 }
@@ -15,6 +35,19 @@ body {
 }
 
 @media (prefers-color-scheme: dark) {
+  :root {
+    --viz-latest: #86b6ef;
+    --viz-older: #3987e5;
+    --viz-embedded: #1c5cab;
+    --viz-unknown: #6b6b68;
+    --viz-baseline: #3a3a38;
+    --viz-context: #737373;
+    --viz-rollback: #e66767;
+    --viz-wash: rgb(134 182 239 / 0.12);
+    --viz-grid: #262626;
+    --viz-surface: #171717;
+  }
+
   body {
     @apply bg-neutral-950 text-neutral-100;
   }

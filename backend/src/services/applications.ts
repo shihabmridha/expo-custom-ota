@@ -159,11 +159,19 @@ export async function generateSigningKey(
   };
 }
 
-/** Everything the dashboard's list view shows, in one pass. */
-export async function listApplicationSummaries(db: OtaDatabase, publicUrl: string) {
+/**
+ * Everything the dashboard's list view shows, in one pass. Pass `onlyId` for a
+ * single application's summary without paying for every other application's.
+ */
+export async function listApplicationSummaries(
+  db: OtaDatabase,
+  publicUrl: string,
+  onlyId?: string,
+) {
   const apps = await db
     .select()
     .from(schema.applications)
+    .where(onlyId ? eq(schema.applications.id, onlyId) : undefined)
     .orderBy(desc(schema.applications.createdAt));
 
   const summaries = [];

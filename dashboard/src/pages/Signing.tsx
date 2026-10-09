@@ -53,7 +53,20 @@ export function SigningPage() {
           republish after rotating.
         </p>
         {generate.isError && <ErrorNote>{errorMessage(generate.error)}</ErrorNote>}
-        <Button variant="primary" disabled={generate.isPending} onClick={() => generate.mutate()}>
+        <Button
+          variant="primary"
+          disabled={generate.isPending}
+          onClick={() => {
+            if (
+              !active ||
+              window.confirm(
+                'Rotate the signing key? Clients configured for the new certificate will refuse updates signed with the old one until you republish.',
+              )
+            ) {
+              generate.mutate();
+            }
+          }}
+        >
           {generate.isPending
             ? 'Generating…'
             : active

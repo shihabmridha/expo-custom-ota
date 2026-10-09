@@ -86,8 +86,7 @@ applicationRoutes.post(
 
 applicationRoutes.get('/:id', async (c) => {
   const app = await loadApplication(c, c.req.param('id'));
-  const all = await listApplicationSummaries(c.var.db, c.var.env.OTA_PUBLIC_URL);
-  const summary = all.find((a) => a.id === app.id);
+  const [summary] = await listApplicationSummaries(c.var.db, c.var.env.OTA_PUBLIC_URL, app.id);
   if (!summary) throw new ApplicationError('NOT_FOUND', 404, 'Unknown application.');
   return c.json(summary);
 });

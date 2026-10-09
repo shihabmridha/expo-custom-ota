@@ -339,11 +339,10 @@ releaseRoutes.get('/applications/:id/metrics', async (c) => {
     .from(schema.releases)
     .where(eq(schema.releases.applicationId, applicationId));
 
-  const assetStats = await c.var.db
-    .select({
-      n: sql<number>`count(distinct ${schema.assets.id})`,
-      bytes: sql<number>`coalesce(sum(distinct ${schema.assets.sizeBytes}), 0)`,
-    })
+  // Distinct assets first, then sum. `sum(distinct size_bytes)` would collapse
+  // two different assets that happen to share a byte size into one.
+  const used = c.var.db
+    .selectDistinct({ id: schema.assets.id, sizeBytes: schema.assets.sizeBytes })
     .from(schema.assets)
     .innerJoin(schema.releaseAssets, eq(schema.releaseAssets.assetId, schema.assets.id))
     .innerJoin(
@@ -351,7 +350,14 @@ releaseRoutes.get('/applications/:id/metrics', async (c) => {
       eq(schema.releaseVariants.id, schema.releaseAssets.releaseVariantId),
     )
     .innerJoin(schema.releases, eq(schema.releases.id, schema.releaseVariants.releaseId))
-    .where(eq(schema.releases.applicationId, applicationId));
+    .where(eq(schema.releases.applicationId, applicationId))
+    .as('used');
+  const assetStats = await c.var.db
+    .select({
+      n: sql<number>`count(*)`,
+      bytes: sql<number>`coalesce(sum(${used.sizeBytes}), 0)`,
+    })
+    .from(used);
 
   const daily = await c.var.db
     .select({

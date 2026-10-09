@@ -68,7 +68,9 @@ export function ChannelsPage() {
             <Button
               variant="danger"
               disabled={remove.isPending}
-              onClick={() => remove.mutate(channel.id)}
+              onClick={() => {
+                if (window.confirm(`Delete channel "${channel.name}"?`)) remove.mutate(channel.id);
+              }}
             >
               Delete
             </Button>

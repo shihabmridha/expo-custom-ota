@@ -114,6 +114,8 @@ describe('device adoption endpoint', () => {
     expect(row).toBeDefined();
     expect(row!.releaseNumber).toBe(null);
     expect(row!.runtimeVersion).toBe('2.0.0');
+    // No variant to read it from, so it comes from the installs, like the runtime.
+    expect(row!.platform).toBe('android');
     expect(row!.running).toBe(1);
   });
 

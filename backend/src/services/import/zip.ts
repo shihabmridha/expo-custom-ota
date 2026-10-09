@@ -85,6 +85,8 @@ export interface ZipArchive {
   has(name: string): boolean;
   /** Read one entry by exact (POSIX-normalised) name. */
   read(name: string): Uint8Array;
+  /** Read several entries in a single pass over the archive. */
+  readMany(names: Iterable<string>): Map<string, Uint8Array>;
 }
 
 /**
@@ -160,20 +162,27 @@ export function openZip(bytes: Uint8Array, limits: ZipLimits = DEFAULT_ZIP_LIMIT
 
   const byName = new Map(infos.map((info) => [info.name, info]));
 
-  return {
-    entries: () => [...infos],
-    has: (name) => byName.has(name),
-    read(name) {
-      const info = byName.get(name);
-      if (!info) {
+  const readMany = (names: Iterable<string>): Map<string, Uint8Array> => {
+    const wanted = new Set(names);
+    for (const name of wanted) {
+      if (!byName.has(name)) {
         throw new ArchiveError('MISSING_ENTRY', `Archive is missing "${name}".`);
       }
+    }
 
-      // Inflate only this entry.
-      const extracted = unzipSync(bytes, {
-        filter: (candidate) => candidate.name.replace(/\\/g, '/') === name,
-      });
-      const data = extracted[name] ?? extracted[info.name];
+    // Inflate only the wanted entries, in one walk of the central directory.
+    const extracted = unzipSync(bytes, {
+      filter: (candidate) => wanted.has(candidate.name.replace(/\\/g, '/')),
+    });
+    const normalized = new Map<string, Uint8Array>();
+    for (const [rawName, data] of Object.entries(extracted)) {
+      normalized.set(rawName.replace(/\\/g, '/'), data);
+    }
+
+    const result = new Map<string, Uint8Array>();
+    for (const name of wanted) {
+      const info = byName.get(name)!;
+      const data = normalized.get(name);
       if (!data) {
         throw new ArchiveError('MISSING_ENTRY', `Archive is missing "${name}".`);
       }
@@ -192,8 +201,15 @@ export function openZip(bytes: Uint8Array, limits: ZipLimits = DEFAULT_ZIP_LIMIT
           `Entry "${name}" inflated to ${data.byteLength} bytes, over the limit.`,
         );
       }
+      result.set(name, data);
+    }
+    return result;
+  };
 
-      return data;
-    },
+  return {
+    entries: () => [...infos],
+    has: (name) => byName.has(name),
+    read: (name) => readMany([name]).get(name)!,
+    readMany,
   };
 }

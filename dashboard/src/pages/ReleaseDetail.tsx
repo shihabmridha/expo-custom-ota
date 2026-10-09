@@ -37,8 +37,8 @@ export function ReleaseDetailPage() {
   const invalidate = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: qk.release(releaseId!) }),
-      queryClient.invalidateQueries({ queryKey: qk.releases(id!) }),
-      queryClient.invalidateQueries({ queryKey: qk.deployments(id!) }),
+      // Releases, deployments, history and device adoption all hang off this key.
+      queryClient.invalidateQueries({ queryKey: qk.application(id!) }),
     ]);
   };
 
@@ -218,7 +218,15 @@ export function ReleaseDetailPage() {
             <Button
               className="w-full"
               disabled={rollback.isPending}
-              onClick={() => rollback.mutate()}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Create a new release from #${data.releaseNumber} and publish it to ${promoteTo}?`,
+                  )
+                ) {
+                  rollback.mutate();
+                }
+              }}
             >
               {rollback.isPending ? 'Rolling back…' : `Roll back into ${promoteTo}`}
             </Button>
@@ -230,7 +238,11 @@ export function ReleaseDetailPage() {
                 variant="danger"
                 className="w-full"
                 disabled={remove.isPending}
-                onClick={() => remove.mutate()}
+                onClick={() => {
+                  if (window.confirm(`Delete draft release #${data.releaseNumber}?`)) {
+                    remove.mutate();
+                  }
+                }}
               >
                 Delete draft
               </Button>

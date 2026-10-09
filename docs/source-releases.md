@@ -43,9 +43,10 @@ legacy installs appear under unknown source revision. The application route
 provides tenant scope. User-ID fallback records are excluded from install groups,
 matching device metrics; they remain visible in the install-record list.
 
-The install list also exposes `sourceRevision` and `launchKind`. The dashboard's
-Source releases panel displays these groups; Update history continues to display
-the original served/confirmed funnel. No grouping field participates in selection,
+The install list also exposes `sourceRevision` and `launchKind`. The dashboard shows
+each install's source revision under what it is running in "Find an install"; the
+grouped endpoint remains for API and script consumers (see D20). The update table
+continues to display the original served/confirmed funnel. No grouping field participates in selection,
 targeting, or confirmation proof.
 
 ## Rollout

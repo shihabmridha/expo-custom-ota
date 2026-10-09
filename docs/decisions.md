@@ -419,3 +419,40 @@ labels its state as last observed running, and labels unconfirmed serves without
 failed downloads or launches. Its history panel remains application-wide, separately from
 filtered active adoption. Recipient pagination now happens in SQL with client-ID tie-breaking;
 pruned install records leave their events visible and have a null `lastSeenAt`.
+
+## D20 — The Devices tab leads with rollout adoption; metrics carry the series it charts
+
+The Devices tab had grown into five stacked panels (active adoption, inactivity, source
+releases, update history, install records), each explaining its own caveats in prose, and it
+answered "did my latest update reach people?" only indirectly. It now leads with one rollout
+panel per deployment target: adoption of the deployed update among the target's active
+installs, sent / launched counts and launch rate, a cumulative rollout curve, and what the rest
+of the cohort runs (deployed release, older updates, embedded build, not reported). Activity
+(active installs in 24 h / 7 d / 30 d, last update check, update checks per day from
+`usage_daily`), the per-update table with inline recipients, and the install lookup follow. The
+caveats live in one "How these numbers work" disclosure.
+
+**Additive metrics fields, not a new endpoint.** `device-metrics` gains `activeInstalls`, and
+each group gains `deployedAt`, `served`, `confirmed`, a per-UTC-day `timeline` of first-time
+events for the deployed update, and a `running` distribution of active installs by current
+update and launch kind. All of it is read from the same retained tables with the same filters
+and window as D19, so nothing here changes selection or adds writes (D16 holds). The timeline is
+per update id, not per channel: a promoted update shares its id across channels and the event
+log does not record the channel, so the UI says the counts cover every channel the update is
+deployed to rather than pretending otherwise.
+
+**The source-release panel is gone from the dashboard, the endpoint is not.** Grouping by
+source revision answers a provenance question ("which native build lineage is this?") that the
+rollout question does not need, and as a top-level panel it read as a second, competing
+adoption view. `device-source-groups` stays for API and script consumers; the install lookup
+shows each install's source revision.
+
+**Launch rate warning.** When at least 20 installs were sent the deployed update and fewer than
+80% reported running it, the panel says so and lists the usual causes. Expo applies updates on
+the next cold start, so a lag is expected; the threshold flags a gap, it does not diagnose one.
+
+**Charts are hand-written SVG.** Four small components in `dashboard/src/components/charts.tsx`
+cover the page; a chart library would be more dependency than the screens justify. Colors are
+`--viz-*` tokens in `index.css`: "how current is an install" is ordinal, so it is one validated
+blue ramp (stepped separately for dark mode), with a hatched gray for "not reported" and red
+reserved for rollback.

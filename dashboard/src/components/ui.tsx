@@ -176,3 +176,64 @@ export function formatBytes(bytes: number): string {
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleString();
 }
+
+const relative = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ['year', 365 * 86_400_000],
+  ['month', 30 * 86_400_000],
+  ['day', 86_400_000],
+  ['hour', 3_600_000],
+  ['minute', 60_000],
+];
+
+/** "3 days ago" — for scanning a column; the absolute time goes in a title. */
+export function timeAgo(iso: string, now = new Date()): string {
+  const elapsed = new Date(iso).getTime() - now.getTime();
+  for (const [unit, ms] of RELATIVE_UNITS) {
+    if (Math.abs(elapsed) >= ms) return relative.format(Math.round(elapsed / ms), unit);
+  }
+  return 'just now';
+}
+
+/**
+ * A single-choice control for a handful of options, as a radio group so arrow
+ * keys and screen readers treat it as one choice rather than N buttons.
+ */
+export function Segmented<T extends string | number>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: readonly { value: T; label: string }[];
+  onChange: (value: T) => void;
+}) {
+  return (
+    <fieldset className="min-w-0">
+      <legend className="mb-1 block text-sm font-medium">{label}</legend>
+      <div className="inline-flex rounded-md border border-neutral-300 bg-white p-0.5 dark:border-neutral-700 dark:bg-neutral-950">
+        {options.map((option) => (
+          <label
+            key={String(option.value)}
+            className={`cursor-pointer rounded px-3 py-1 text-sm whitespace-nowrap has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-neutral-900 dark:has-[:focus-visible]:outline-white ${
+              option.value === value
+                ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
+                : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100'
+            }`}
+          >
+            <input
+              type="radio"
+              className="sr-only"
+              name={label}
+              checked={option.value === value}
+              onChange={() => onChange(option.value)}
+            />
+            {option.label}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}

@@ -1,6 +1,6 @@
 import { beforeEach, expect, test } from 'bun:test';
 import { deviceMetricsQuerySchema, deviceMetricsSchema } from '@ota/contracts';
-import { deployments, deviceInstalls } from '@ota/db';
+import { deployments, deviceInstalls, deviceUpdateEvents } from '@ota/db';
 import { eq, lt } from 'drizzle-orm';
 import { getDeviceMetrics } from '../src/services/device-metrics.ts';
 import { createMigratedDb, MemoryStorage, seedApplication } from './helpers.ts';
@@ -32,6 +32,8 @@ async function install(overrides: Partial<typeof deviceInstalls.$inferInsert> = 
   await db.insert(deviceInstalls).values(row);
   return row;
 }
+const otherApplication = () =>
+  seedApplication(db, new MemoryStorage(), { slug: 'elsewhere', updateKey: 'elsewhere' });
 const metrics = (query = {}, enabled = true) =>
   getDeviceMetrics(
     db,
@@ -133,4 +135,48 @@ test('returning installs and pruning change retained observations without histor
     .where(lt(deviceInstalls.lastSeenAt, new Date(now.getTime() - 90 * DAY)));
   expect((await metrics()).inactivity.over60d).toBe(0);
   expect((await metrics({}, false)).trackingEnabled).toBe(false);
+});
+
+test('reports the rollout timeline, running distribution and fixed activity windows', async () => {
+  await install({ embeddedUpdateId: 'embedded-id' });
+  await install({ currentUpdateId: 'embedded-id', embeddedUpdateId: 'embedded-id' });
+  await install({ currentUpdateId: null });
+  await install({ lastSeenAt: new Date(now.getTime() - 2 * DAY) });
+  await install({ lastSeenAt: new Date(now.getTime() - 20 * DAY) });
+  await install({ clientIdSource: 'user' });
+
+  const event = (clientId: string, kind: 'served' | 'confirmed', at: Date) => ({
+    applicationId: seeded.applicationId,
+    clientId,
+    updateId: seeded.updateId,
+    kind,
+    platform: 'android' as const,
+    createdAt: at,
+  });
+  const yesterday = new Date(now.getTime() - DAY);
+  await db.insert(deviceUpdateEvents).values([
+    event('a', 'served', yesterday),
+    event('b', 'served', yesterday),
+    event('a', 'confirmed', now),
+    // Another application's events for the same id never leak in.
+    { ...event('c', 'served', now), applicationId: (await otherApplication()).applicationId },
+  ]);
+
+  const result = await metrics();
+  expect(deviceMetricsSchema.safeParse(result).success).toBe(true);
+  expect(result.activeInstalls).toEqual({ last1d: 3, last7d: 4, last30d: 5 });
+  const group = result.groups[0]!;
+  expect(group.deployedAt).not.toBeNull();
+  expect(group).toMatchObject({ served: 2, confirmed: 1 });
+  expect(group.timeline).toEqual([
+    { day: '2026-09-08', served: 2, confirmed: 0 },
+    { day: '2026-09-09', served: 0, confirmed: 1 },
+  ]);
+  // Ties order by release (newest first), then known ids before unreported ones.
+  expect(group.running).toEqual([
+    { updateId: seeded.updateId, releaseNumber: 1, launchKind: 'downloaded', installs: 1 },
+    { updateId: seeded.updateId, releaseNumber: 1, launchKind: 'unknown', installs: 1 },
+    { updateId: 'embedded-id', releaseNumber: null, launchKind: 'embedded', installs: 1 },
+    { updateId: null, releaseNumber: null, launchKind: 'unknown', installs: 1 },
+  ]);
 });

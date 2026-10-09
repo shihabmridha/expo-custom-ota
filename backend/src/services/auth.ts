@@ -17,6 +17,9 @@ export interface SessionAdmin {
 
 export const SESSION_COOKIE = 'ota_session';
 
+/** How stale `sessions.last_seen_at` may get before a request refreshes it. */
+const LAST_SEEN_RESOLUTION_MS = 60_000;
+
 function hashToken(token: string): string {
   return new Bun.CryptoHasher('sha256').update(token).digest('hex');
 }
@@ -89,7 +92,7 @@ export async function resolveSession(db: OtaDatabase, token: string): Promise<Se
   const rows = await db
     .select({
       sessionId: schema.sessions.id,
-      expiresAt: schema.sessions.expiresAt,
+      lastSeenAt: schema.sessions.lastSeenAt,
       id: schema.admins.id,
       email: schema.admins.email,
       name: schema.admins.name,
@@ -107,10 +110,15 @@ export async function resolveSession(db: OtaDatabase, token: string): Promise<Se
   const row = rows[0];
   if (!row) return null;
 
-  await db
-    .update(schema.sessions)
-    .set({ lastSeenAt: new Date() })
-    .where(eq(schema.sessions.id, row.sessionId));
+  // Coarse on purpose: every admin request resolves the session, and a write per
+  // request would contend with device polls for SQLite's single writer.
+  const now = Date.now();
+  if (!row.lastSeenAt || now - row.lastSeenAt.getTime() >= LAST_SEEN_RESOLUTION_MS) {
+    await db
+      .update(schema.sessions)
+      .set({ lastSeenAt: new Date(now) })
+      .where(eq(schema.sessions.id, row.sessionId));
+  }
 
   return { id: row.id, email: row.email, name: row.name };
 }

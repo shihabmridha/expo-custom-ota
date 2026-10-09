@@ -11,6 +11,9 @@ import { sourceRevisionSchema } from './source-metadata.ts';
  */
 export const deviceClientIdSourceSchema = z.enum(['eas', 'extra', 'user']);
 
+/** Derived from current versus embedded update ids; `unknown` when either is missing. */
+const launchKindSchema = z.enum(['embedded', 'downloaded', 'unknown']);
+
 /** App-supplied via `expo-extra-params`; any of them may be absent. */
 const deviceFactsSchema = {
   osVersion: z.string().nullable(),
@@ -28,7 +31,7 @@ export const deviceInstallSchema = z.object({
   runtimeVersion: z.string(),
   currentUpdateId: z.string().nullable(),
   sourceRevision: sourceRevisionSchema.nullable(),
-  launchKind: z.enum(['embedded', 'downloaded', 'unknown']),
+  launchKind: launchKindSchema,
   currentUpdateSince: z.string().nullable(),
   /** Release number of `currentUpdateId`, when it is one of ours. */
   currentReleaseNumber: z.number().int().nullable(),
@@ -135,6 +138,12 @@ export const deviceMetricsSchema = z.object({
   retentionDays: z.number().int(),
   activeWithinDays: z.number().int(),
   userFallbackRecords: z.number().int(),
+  /** Install identities seen within each fixed window, respecting the cohort filters. */
+  activeInstalls: z.object({
+    last1d: z.number().int(),
+    last7d: z.number().int(),
+    last30d: z.number().int(),
+  }),
   inactivity: z.object({
     within7d: z.number().int(),
     over7Through30d: z.number().int(),
@@ -149,10 +158,32 @@ export const deviceMetricsSchema = z.object({
       deploymentState: z.enum(['update', 'rollback', 'none']),
       updateId: z.string().nullable(),
       releaseNumber: z.number().int().nullable(),
+      /** When the current deployment last changed — "live since". */
+      deployedAt: z.string().nullable(),
       activeEligible: z.number().int(),
       activeOnTarget: z.number().int(),
       unknownCurrentUpdate: z.number().int(),
       adoptionPercent: z.number().nullable(),
+      /** Retained served / confirmed events for the deployed update, all time. */
+      served: z.number().int(),
+      confirmed: z.number().int(),
+      /** First-time served / confirmed events per UTC day for the deployed update. */
+      timeline: z.array(
+        z.object({
+          day: z.string(),
+          served: z.number().int(),
+          confirmed: z.number().int(),
+        }),
+      ),
+      /** What the cohort's active installs are running, largest first. */
+      running: z.array(
+        z.object({
+          updateId: z.string().nullable(),
+          releaseNumber: z.number().int().nullable(),
+          launchKind: launchKindSchema,
+          installs: z.number().int(),
+        }),
+      ),
     }),
   ),
 });
@@ -169,7 +200,7 @@ export const deviceSourceGroupsSchema = z.object({
       updates: z.array(
         z.object({
           updateId: z.string().nullable(),
-          launchKind: z.enum(['embedded', 'downloaded', 'unknown']),
+          launchKind: launchKindSchema,
           installs: z.number().int(),
         }),
       ),

@@ -259,13 +259,9 @@ export async function importRelease(
     }
 
     // --- Hash everything once -------------------------------------------
+    const contents = archive.readMany(needed);
     const digests = new Map<string, ReturnType<typeof digestAsset>>();
-    const contents = new Map<string, Uint8Array>();
-    for (const path of needed) {
-      const bytes = archive.read(path);
-      contents.set(path, bytes);
-      digests.set(path, digestAsset(bytes));
-    }
+    for (const [path, bytes] of contents) digests.set(path, digestAsset(bytes));
 
     // --- Deduplicate against existing assets -----------------------------
     const allHashes = [...digests.values()].map((d) => d.sha256Hex);

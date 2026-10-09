@@ -42,10 +42,8 @@ export function DeploymentsPage() {
         params: { id: id! },
         body: { channel, platform, runtimeVersion },
       }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: qk.deployments(id!) });
-      await queryClient.invalidateQueries({ queryKey: qk.deploymentEvents(id!) });
-    },
+    // Everything application-scoped: deployments, history, device adoption.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: qk.application(id!) }),
   });
 
   return (
@@ -125,7 +123,15 @@ export function DeploymentsPage() {
         <Button
           variant="danger"
           disabled={!runtimeVersion || killSwitch.isPending}
-          onClick={() => killSwitch.mutate()}
+          onClick={() => {
+            if (
+              window.confirm(
+                `Roll ${platform} devices on "${channel}" (runtime ${runtimeVersion}) back to their embedded bundle?`,
+              )
+            ) {
+              killSwitch.mutate();
+            }
+          }}
         >
           Roll back to embedded
         </Button>

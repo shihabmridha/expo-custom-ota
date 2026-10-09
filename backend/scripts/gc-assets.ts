@@ -1,6 +1,6 @@
 import { createDb } from '@ota/db';
 import * as schema from '@ota/db/schema/index';
-import { lt, notInArray, sql } from 'drizzle-orm';
+import { and, eq, lt, notExists, sql } from 'drizzle-orm';
 import { loadEnv } from '../src/config/env.ts';
 import { createStorage } from '../src/storage/index.ts';
 
@@ -16,7 +16,13 @@ import { createStorage } from '../src/storage/index.ts';
  *   bun run gc:assets -- --apply
  */
 const apply = process.argv.includes('--apply');
-const graceDays = Number(process.argv[process.argv.indexOf('--grace-days') + 1] || '7');
+const graceArg = process.argv.indexOf('--grace-days');
+const graceDays = graceArg === -1 ? 7 : Number(process.argv[graceArg + 1]);
+
+if (!Number.isFinite(graceDays) || graceDays < 0) {
+  console.error(`Invalid grace period: ${process.argv[graceArg + 1]}. Pass --grace-days <n>.`);
+  process.exit(1);
+}
 
 const env = loadEnv();
 const db = createDb({ url: env.DATABASE_URL });
@@ -24,10 +30,14 @@ const storage = createStorage(env);
 
 const cutoff = new Date(Date.now() - graceDays * 86_400_000);
 
-const referenced = await db
-  .select({ assetId: schema.releaseAssets.assetId })
-  .from(schema.releaseAssets);
-const referencedIds = referenced.map((r) => r.assetId);
+// Correlated rather than `NOT IN (<every referenced id>)`, which would bind one
+// parameter per reference and eventually exceed SQLite's variable limit.
+const unreferenced = notExists(
+  db
+    .select({ one: sql`1` })
+    .from(schema.releaseAssets)
+    .where(eq(schema.releaseAssets.assetId, schema.assets.id)),
+);
 
 const orphans = await db
   .select({
@@ -36,11 +46,7 @@ const orphans = await db
     sizeBytes: schema.assets.sizeBytes,
   })
   .from(schema.assets)
-  .where(
-    referencedIds.length > 0
-      ? sql`${lt(schema.assets.createdAt, cutoff)} AND ${notInArray(schema.assets.id, referencedIds)}`
-      : lt(schema.assets.createdAt, cutoff),
-  );
+  .where(and(lt(schema.assets.createdAt, cutoff), unreferenced));
 
 const totalBytes = orphans.reduce((sum, o) => sum + o.sizeBytes, 0);
 
@@ -56,12 +62,28 @@ if (!apply) {
   process.exit(0);
 }
 
+let removed = 0;
+let removedBytes = 0;
 for (const orphan of orphans) {
+  // An import may have deduplicated against this asset since the scan above.
+  // Re-check right before deleting so a newly referenced object survives.
+  const stillOrphaned = await db
+    .select({ id: schema.assets.id })
+    .from(schema.assets)
+    .where(and(eq(schema.assets.id, orphan.id), unreferenced))
+    .limit(1);
+  if (stillOrphaned.length === 0) {
+    console.log(`kept ${orphan.storageKey} (referenced again)`);
+    continue;
+  }
+
   // Object first, row second: an orphaned object is harmless and will be caught
   // by the next run, whereas a row without an object serves broken manifests.
   await storage.delete(orphan.storageKey);
   await db.delete(schema.assets).where(sql`id = ${orphan.id}`);
+  removed += 1;
+  removedBytes += orphan.sizeBytes;
   console.log(`deleted ${orphan.storageKey}`);
 }
 
-console.log(`\nRemoved ${orphans.length} asset(s), ${(totalBytes / 1024 / 1024).toFixed(1)} MB.`);
+console.log(`\nRemoved ${removed} asset(s), ${(removedBytes / 1024 / 1024).toFixed(1)} MB.`);
